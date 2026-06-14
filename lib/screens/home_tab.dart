@@ -234,30 +234,6 @@ class _HomeTabState extends State<HomeTab> {
             ],
           ),
         ),
-        // Premium Badge
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-          decoration: BoxDecoration(
-            color: AppColors.accent.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.accent.withValues(alpha: 0.3), width: 1),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: const [
-              Text('👑', style: TextStyle(fontSize: 12)),
-              SizedBox(width: 4),
-              Text(
-                'PRO',
-                style: TextStyle(
-                  color: AppColors.accent,
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-        ),
       ],
     );
   }

@@ -20,16 +20,19 @@ void main() async {
     themeNotifier.value = ThemeMode.system;
   }
 
-  runApp(const MyApp());
+  // Check login status once on startup
+  final authService = AuthService();
+  final isLoggedIn = await authService.checkLoginStatus();
+
+  runApp(MyApp(isLoggedIn: isLoggedIn));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final bool isLoggedIn;
+  const MyApp({super.key, this.isLoggedIn = false});
 
   @override
   Widget build(BuildContext context) {
-    final AuthService authService = AuthService();
-
     return ValueListenableBuilder<ThemeMode>(
       valueListenable: themeNotifier,
       builder: (context, currentThemeMode, _) {
@@ -39,26 +42,7 @@ class MyApp extends StatelessWidget {
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,
           themeMode: currentThemeMode,
-          home: FutureBuilder<bool>(
-            future: authService.checkLoginStatus(),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Scaffold(
-                  body: Center(
-                    child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
-                    ),
-                  ),
-                );
-              }
-              
-              if (snapshot.hasData && snapshot.data == true) {
-                return const DashboardScreen();
-              }
-              
-              return const LoginScreen();
-            },
-          ),
+          home: isLoggedIn ? const DashboardScreen() : const LoginScreen(),
         );
       },
     );

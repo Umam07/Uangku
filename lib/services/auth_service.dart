@@ -29,6 +29,13 @@ class AuthService {
     };
   }
 
+  // Update user profile data
+  Future<void> updateUserProfile(String name, String photo) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyUserName, name);
+    await prefs.setString(_keyUserPhoto, photo);
+  }
+
   // Simulate Google Sign-In (Bypassed)
   Future<bool> loginWithGoogleMock() async {
     // Simulate API network call delay (1.5 seconds)
@@ -38,7 +45,7 @@ class AuthService {
     await prefs.setBool(_keyIsLoggedIn, true);
     await prefs.setString(_keyUserName, "Muhammad Syafi'ul Umam");
     await prefs.setString(_keyUserEmail, "msyafiul.umam@gmail.com");
-    await prefs.setString(_keyUserPhoto, "https://api.dicebear.com/7.x/bottts/svg?seed=umam");
+    await prefs.setString(_keyUserPhoto, "https://api.dicebear.com/7.x/bottts/png?seed=umam");
     await prefs.setString(_keyLoginType, "google");
 
     return true;
@@ -53,7 +60,7 @@ class AuthService {
     await prefs.setBool(_keyIsLoggedIn, true);
     await prefs.setString(_keyUserName, "Tamu Uangku");
     await prefs.setString(_keyUserEmail, "tamu@uangku.id");
-    await prefs.setString(_keyUserPhoto, "https://api.dicebear.com/7.x/bottts/svg?seed=guest");
+    await prefs.setString(_keyUserPhoto, "https://api.dicebear.com/7.x/bottts/png?seed=guest");
     await prefs.setString(_keyLoginType, "guest");
 
     return true;
