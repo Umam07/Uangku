@@ -19,16 +19,16 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   final TextEditingController _searchController = TextEditingController();
 
-  final List<String> _categories = [
-    'Semua',
-    '💰 Gaji',
-    '🎁 Bonus',
-    '🍔 Makanan',
-    '🚗 Transportasi',
-    '🛒 Belanja',
-    '🧾 Tagihan',
-    '🎬 Hiburan',
-    '💊 Kesehatan',
+  final List<Map<String, dynamic>> _categoriesData = [
+    {'name': 'Semua', 'emoji': '🔍', 'color': AppColors.primary},
+    {'name': 'Gaji', 'emoji': '💰', 'color': Colors.green},
+    {'name': 'Bonus', 'emoji': '🎁', 'color': Colors.amber},
+    {'name': 'Makanan', 'emoji': '🍔', 'color': AppColors.danger},
+    {'name': 'Transportasi', 'emoji': '🚗', 'color': Colors.blue},
+    {'name': 'Belanja', 'emoji': '🛒', 'color': AppColors.accent},
+    {'name': 'Tagihan', 'emoji': '🧾', 'color': Colors.purple},
+    {'name': 'Hiburan', 'emoji': '🎬', 'color': Colors.pink},
+    {'name': 'Kesehatan', 'emoji': '💊', 'color': Colors.redAccent},
   ];
 
   @override
@@ -65,7 +65,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
     // Category filter
     if (_selectedCategory != 'Semua') {
-      results = results.where((tx) => tx.category == _selectedCategory).toList();
+      results = results.where((tx) => tx.category.contains(_selectedCategory)).toList();
     }
 
     setState(() {
@@ -174,116 +174,139 @@ class _HistoryScreenState extends State<HistoryScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // Search and Filter Header
+            // Search Header (Padded to match page style)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-              child: Column(
-                children: [
-                  // Search Bar
-                  TextField(
-                    controller: _searchController,
-                    onChanged: (val) {
-                      setState(() {
-                        _searchQuery = val;
-                      });
-                      _applyFilters();
-                    },
-                    decoration: InputDecoration(
-                      hintText: 'Cari transaksi...',
-                      prefixIcon: const Icon(Icons.search_rounded, color: AppColors.textSecondary),
-                      suffixIcon: _searchQuery.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(Icons.close_rounded, color: AppColors.textSecondary),
-                              onPressed: () {
-                                _searchController.clear();
-                                setState(() {
-                                  _searchQuery = '';
-                                });
-                                _applyFilters();
-                              },
-                            )
-                          : null,
-                      filled: true,
-                      fillColor: isDark ? AppColors.surfaceDark : Colors.white,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(20),
-                        borderSide: BorderSide.none,
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(20),
-                        borderSide: BorderSide(
-                          color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.05),
-                        ),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(20),
-                        borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
-                      ),
+              child: TextField(
+                controller: _searchController,
+                onChanged: (val) {
+                  setState(() {
+                    _searchQuery = val;
+                  });
+                  _applyFilters();
+                },
+                decoration: InputDecoration(
+                  hintText: 'Cari transaksi...',
+                  prefixIcon: const Icon(Icons.search_rounded, color: AppColors.textSecondary),
+                  suffixIcon: _searchQuery.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.close_rounded, color: AppColors.textSecondary),
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() {
+                              _searchQuery = '';
+                            });
+                            _applyFilters();
+                          },
+                        )
+                      : null,
+                  filled: true,
+                  fillColor: isDark ? AppColors.surfaceDark : Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(20),
+                    borderSide: BorderSide.none,
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(20),
+                    borderSide: BorderSide(
+                      color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.05),
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  // Horizontal Category Chips
-                  SizedBox(
-                    height: 40,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: _categories.length,
-                      physics: const BouncingScrollPhysics(),
-                      itemBuilder: (context, index) {
-                        final cat = _categories[index];
-                        final isSelected = _selectedCategory == cat;
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 8.0),
-                          child: GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                _selectedCategory = cat;
-                              });
-                              _applyFilters();
-                            },
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(20),
+                    borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 4),
+            
+            // Premium Category Chips (Spans full width with internal padding)
+            SizedBox(
+              height: 46,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                itemCount: _categoriesData.length,
+                physics: const BouncingScrollPhysics(),
+                itemBuilder: (context, index) {
+                  final cat = _categoriesData[index];
+                  final catName = cat['name'] as String;
+                  final catEmoji = cat['emoji'] as String;
+                  final catColor = cat['color'] as Color;
+                  final isSelected = _selectedCategory == catName;
+
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8.0),
+                    child: GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _selectedCategory = catName;
+                        });
+                        _applyFilters();
+                      },
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: const EdgeInsets.fromLTRB(8, 6, 16, 6),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? catColor.withValues(alpha: 0.12)
+                              : (isDark ? AppColors.surfaceDark : Colors.white),
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(
+                            color: isSelected
+                                ? catColor.withValues(alpha: 0.35)
+                                : (isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.06)),
+                            width: 1.2,
+                          ),
+                          boxShadow: isSelected
+                              ? [
+                                  BoxShadow(
+                                    color: catColor.withValues(alpha: 0.15),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 3),
+                                  )
+                                ]
+                              : null,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Emoji circular avatar
+                            Container(
+                              width: 28,
+                              height: 28,
                               decoration: BoxDecoration(
                                 color: isSelected
-                                    ? AppColors.primary
-                                    : (isDark ? AppColors.surfaceDark : Colors.white),
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(
-                                  color: isSelected
-                                      ? Colors.transparent
-                                      : (isDark ? Colors.white24 : Colors.black12),
-                                  width: 1,
-                                ),
-                                boxShadow: isSelected
-                                    ? [
-                                        BoxShadow(
-                                          color: AppColors.primary.withValues(alpha: 0.25),
-                                          blurRadius: 8,
-                                          offset: const Offset(0, 3),
-                                        )
-                                      ]
-                                    : null,
+                                    ? catColor.withValues(alpha: 0.25)
+                                    : (isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.04)),
+                                shape: BoxShape.circle,
                               ),
                               child: Center(
                                 child: Text(
-                                  cat,
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                                    color: isSelected
-                                        ? Colors.white
-                                        : (isDark ? AppColors.textPrimaryDark : AppColors.textPrimary),
-                                  ),
+                                  catEmoji,
+                                  style: const TextStyle(fontSize: 14),
                                 ),
                               ),
                             ),
-                          ),
-                        );
-                      },
+                            const SizedBox(width: 8),
+                            // Category Label
+                            Text(
+                              catName,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                                color: isSelected
+                                    ? catColor
+                                    : (isDark ? AppColors.textPrimaryDark : AppColors.textPrimary),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                  ),
-                ],
+                  );
+                },
               ),
             ),
             const SizedBox(height: 8),
