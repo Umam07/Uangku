@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../theme/app_colors.dart';
 import '../services/transaction_service.dart';
 
@@ -139,12 +141,14 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
     );
 
     await _transactionService.addTransaction(newTx);
+    HapticFeedback.lightImpact();
     
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Transaksi "${newTx.title}" disimpan!'),
-          backgroundColor: AppColors.accent,
+          backgroundColor: AppColors.primary,
+          behavior: SnackBarBehavior.floating,
         ),
       );
       
@@ -158,6 +162,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
 
   // Trigger Mock Camera OCR Scanner
   void _startMockScanner() {
+    HapticFeedback.lightImpact();
     setState(() {
       _showScanner = true;
       _isScanning = false;
@@ -165,13 +170,15 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
   }
 
   void _triggerScanProcess() {
+    HapticFeedback.mediumImpact();
     setState(() {
       _isScanning = true;
     });
 
-    // Simulate OCR Reading for 2.5 seconds
+    // Simulate OCR Reading for 2.5 seconds (satisfies design guide loading <= 5s)
     Timer(const Duration(milliseconds: 2500), () {
       if (!mounted) return;
+      HapticFeedback.heavyImpact();
       setState(() {
         _showScanner = false;
         _isScanning = false;
@@ -199,198 +206,254 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
     final isDark = theme.brightness == Brightness.dark;
     final categories = _isIncome ? _incomeCategories : _expenseCategories;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'Tambah Transaksi',
-          style: TextStyle(
-            color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        automaticallyImplyLeading: false,
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.surfaceDark : AppColors.background,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      body: Stack(
-        children: [
-          // Main Input Form
-          SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20.0, 16.0, 20.0, 100.0), // Space for floating navbar
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Expense / Income Toggle Switch
-                    _buildToggleSwitch(isDark),
-                    const SizedBox(height: 24),
-
-                    // Amount Input Card
-                    _buildAmountCard(isDark, theme),
-                    const SizedBox(height: 24),
-
-                    // Title Input
-                    Text(
-                      'Nama Transaksi',
-                      style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 8),
-                    TextFormField(
-                      controller: _titleController,
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                      decoration: InputDecoration(
-                        hintText: _isIncome ? 'Misal: Gaji Pokok' : 'Misal: Makan Ramen',
-                        prefixIcon: const Icon(Icons.edit_note_rounded, color: AppColors.textSecondary),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Nama transaksi tidak boleh kosong';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Category Selector Label
-                    Text(
-                      'Pilih Kategori',
-                      style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 12),
-
-                    // Category Emojis Grid
-                    _buildCategoryGrid(categories, isDark),
-                    const SizedBox(height: 32),
-
-                    // Action buttons (Save & Scan Struk)
-                    Row(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: ClipRRect(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        child: SizedBox(
+          height: MediaQuery.of(context).size.height * 0.85,
+          child: Stack(
+            children: [
+              // Main content
+              SafeArea(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(16.0, 12.0, 16.0, 40.0),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Scan receipt button
-                        Expanded(
-                          flex: 2,
-                          child: OutlinedButton(
-                            onPressed: _startMockScanner,
-                            style: OutlinedButton.styleFrom(
-                              backgroundColor: Colors.transparent,
-                              side: BorderSide(
-                                color: AppColors.primary.withValues(alpha: 0.5),
-                                width: 1.5,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: const [
-                                Icon(Icons.camera_alt_rounded, color: AppColors.primary, size: 20),
-                                SizedBox(width: 8),
-                                Text(
-                                  'Scan Struk',
-                                  style: TextStyle(color: AppColors.primary, fontSize: 14, fontWeight: FontWeight.bold),
-                                ),
-                              ],
+                        // Grabber
+                        Center(
+                          child: Container(
+                            width: 36,
+                            height: 5,
+                            decoration: BoxDecoration(
+                              color: isDark ? Colors.white24 : Colors.black12,
+                              borderRadius: BorderRadius.circular(10),
                             ),
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        // Save Button
-                        Expanded(
-                          flex: 3,
-                          child: ElevatedButton(
-                            onPressed: _saveTransaction,
-                            child: const Text('Simpan'),
+                        const SizedBox(height: 12),
+                        
+                        // Header Title & Cancel Button
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Tambah Transaksi',
+                              style: theme.textTheme.titleLarge?.copyWith(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.close_rounded),
+                              onPressed: () {
+                                HapticFeedback.lightImpact();
+                                Navigator.pop(context);
+                              },
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Expense / Income Toggle Switch
+                        _buildToggleSwitch(isDark),
+                        const SizedBox(height: 20),
+
+                        // Amount Input Card
+                        _buildAmountCard(isDark, theme),
+                        const SizedBox(height: 20),
+
+                        // Title Input
+                        Text(
+                          'Nama Transaksi',
+                          style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          controller: _titleController,
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                          decoration: InputDecoration(
+                            hintText: _isIncome ? 'Misal: Gaji Pokok' : 'Misal: Makan Ramen',
+                            prefixIcon: const Icon(Icons.edit_note_rounded, color: AppColors.textSecondary),
                           ),
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Nama transaksi tidak boleh kosong';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 20),
+
+                        // Category Selector Label
+                        Text(
+                          'Pilih Kategori',
+                          style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Category Emojis Grid
+                        _buildCategoryGrid(categories, isDark),
+                        const SizedBox(height: 28),
+
+                        // Action buttons (Save & Scan Struk)
+                        Row(
+                          children: [
+                            // Scan receipt button
+                            Expanded(
+                              flex: 2,
+                              child: OutlinedButton(
+                                onPressed: _startMockScanner,
+                                style: OutlinedButton.styleFrom(
+                                  backgroundColor: Colors.transparent,
+                                  side: BorderSide(
+                                    color: AppColors.primary.withValues(alpha: 0.5),
+                                    width: 1.5,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: const [
+                                    Icon(Icons.camera_alt_rounded, color: AppColors.primary, size: 20),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      'Scan Struk',
+                                      style: TextStyle(color: AppColors.primary, fontSize: 14, fontWeight: FontWeight.bold),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            // Save Button
+                            Expanded(
+                              flex: 3,
+                              child: ElevatedButton(
+                                onPressed: _saveTransaction,
+                                child: const Text('Simpan'),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
+                    ),
+                  ),
+                ),
+              ),
+
+              // OCR Scan Camera Overlay Mode
+              if (_showScanner) _buildCameraOverlay(isDark, theme),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildToggleSwitch(bool isDark) {
+    final trackColor = isDark ? AppColors.fillTrackDark : AppColors.fillTrack;
+    final activePillColor = isDark ? Colors.white.withValues(alpha: 0.15) : Colors.white;
+    final inactiveTextColor = isDark ? AppColors.labelTertiaryDark : AppColors.labelTertiary;
+    
+    final selectedIndex = _isIncome ? 1 : 0;
+    final double alignX = selectedIndex == 0 ? -1.0 : 1.0;
+    
+    return Container(
+      width: double.infinity,
+      height: 46,
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: trackColor,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Stack(
+        children: [
+          // Active sliding pill
+          AnimatedAlign(
+            alignment: Alignment(alignX, 0.0),
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeInOut,
+            child: FractionallySizedBox(
+              widthFactor: 0.5,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: activePillColor,
+                  borderRadius: BorderRadius.circular(10),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.10),
+                      blurRadius: 3,
+                      offset: const Offset(0, 1),
                     ),
                   ],
                 ),
               ),
             ),
           ),
-
-          // OCR Scan Camera Overlay Mode
-          if (_showScanner) _buildCameraOverlay(isDark, theme),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildToggleSwitch(bool isDark) {
-    return Container(
-      width: double.infinity,
-      height: 56,
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.surfaceDark : Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.05),
-        ),
-      ),
-      child: Row(
-        children: [
-          // Expense Switch Tab
-          Expanded(
-            child: GestureDetector(
-              onTap: () => _onToggleType(false),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 250),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  color: !_isIncome ? AppColors.danger : Colors.transparent,
-                  boxShadow: !_isIncome
-                      ? [
-                          BoxShadow(
-                            color: AppColors.danger.withValues(alpha: 0.3),
-                            blurRadius: 8,
-                            offset: const Offset(0, 3),
-                          )
-                        ]
-                      : null,
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  'Pengeluaran 💸',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: !_isIncome ? Colors.white : AppColors.textSecondary,
+          // Interactive Text Labels Row
+          Row(
+            children: [
+              // Pengeluaran Tab
+              Expanded(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {
+                    if (_isIncome) {
+                      HapticFeedback.lightImpact();
+                      _onToggleType(false);
+                    }
+                  },
+                  child: Center(
+                    child: Text(
+                      'Pengeluaran 💸',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: selectedIndex == 0 ? FontWeight.w600 : FontWeight.w400,
+                        color: selectedIndex == 0 
+                            ? AppColors.expenseRed 
+                            : inactiveTextColor,
+                      ),
+                    ),
                   ),
                 ),
               ),
-            ),
-          ),
-          // Income Switch Tab
-          Expanded(
-            child: GestureDetector(
-              onTap: () => _onToggleType(true),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 250),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  color: _isIncome ? AppColors.accent : Colors.transparent,
-                  boxShadow: _isIncome
-                      ? [
-                          BoxShadow(
-                            color: AppColors.accent.withValues(alpha: 0.3),
-                            blurRadius: 8,
-                            offset: const Offset(0, 3),
-                          )
-                        ]
-                      : null,
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  'Pemasukan 💰',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: _isIncome ? Colors.white : AppColors.textSecondary,
+              // Pemasukan Tab
+              Expanded(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {
+                    if (!_isIncome) {
+                      HapticFeedback.lightImpact();
+                      _onToggleType(true);
+                    }
+                  },
+                  child: Center(
+                    child: Text(
+                      'Pemasukan 💰',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: selectedIndex == 1 ? FontWeight.w600 : FontWeight.w400,
+                        color: selectedIndex == 1 
+                            ? AppColors.incomeGreen 
+                            : inactiveTextColor,
+                      ),
+                    ),
                   ),
                 ),
               ),
-            ),
+            ],
           ),
         ],
       ),
@@ -398,14 +461,14 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
   }
 
   Widget _buildAmountCard(bool isDark, ThemeData theme) {
-    final cardColor = _isIncome ? AppColors.accent : AppColors.danger;
+    final cardColor = _isIncome ? AppColors.incomeGreen : AppColors.expenseRed;
     
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
       decoration: BoxDecoration(
         color: cardColor.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: cardColor.withValues(alpha: 0.15),
           width: 1.5,
@@ -431,9 +494,10 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
               Text(
                 'Rp',
                 style: TextStyle(
-                  fontSize: 26,
+                  fontSize: 34,
                   fontWeight: FontWeight.bold,
                   color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
+                  fontFeatures: const [FontFeature.tabularFigures()],
                 ),
               ),
               const SizedBox(width: 8),
@@ -444,9 +508,10 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
                   onChanged: _onAmountChanged,
                   textAlign: TextAlign.left,
                   style: TextStyle(
-                    fontSize: 32,
+                    fontSize: 34,
                     fontWeight: FontWeight.bold,
                     color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
+                    fontFeatures: const [FontFeature.tabularFigures()],
                   ),
                   decoration: const InputDecoration(
                     hintText: '0',
@@ -472,13 +537,15 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
   }
 
   Widget _buildCategoryGrid(List<Map<String, String>> categories, bool isDark) {
+    final trackColor = isDark ? AppColors.fillTrackDark : AppColors.fillTrack;
+    
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 3,
-        crossAxisSpacing: 10,
-        mainAxisSpacing: 10,
+        crossAxisSpacing: 8,
+        mainAxisSpacing: 8,
         childAspectRatio: 2.3,
       ),
       itemCount: categories.length,
@@ -486,36 +553,28 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
         final cat = categories[index];
         final label = '${cat['emoji']} ${cat['name']}';
         final isSelected = _selectedCategory == label;
-        final selectedColor = _isIncome ? AppColors.accent : AppColors.danger;
 
         return GestureDetector(
           onTap: () {
+            HapticFeedback.lightImpact();
             setState(() {
               _selectedCategory = label;
             });
           },
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 150),
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
             decoration: BoxDecoration(
               color: isSelected
-                  ? selectedColor
-                  : (isDark ? AppColors.surfaceDark : Colors.white),
-              borderRadius: BorderRadius.circular(16),
+                  ? AppColors.primary.withValues(alpha: 0.15)
+                  : trackColor,
+              borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: isSelected
-                    ? Colors.transparent
-                    : (isDark ? Colors.white24 : Colors.black12),
-                width: 1,
+                    ? AppColors.primary
+                    : Colors.transparent,
+                width: 1.5,
               ),
-              boxShadow: isSelected
-                  ? [
-                      BoxShadow(
-                        color: selectedColor.withValues(alpha: 0.2),
-                        blurRadius: 8,
-                        offset: const Offset(0, 3),
-                      )
-                    ]
-                  : null,
             ),
             child: Center(
               child: Row(
@@ -526,14 +585,17 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
                     style: const TextStyle(fontSize: 16),
                   ),
                   const SizedBox(width: 6),
-                  Text(
-                    cat['name']!,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-                      color: isSelected
-                          ? Colors.white
-                          : (isDark ? AppColors.textPrimaryDark : AppColors.textPrimary),
+                  Expanded(
+                    child: Text(
+                      cat['name']!,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                        color: isSelected
+                            ? AppColors.primary
+                            : (isDark ? AppColors.textPrimaryDark : AppColors.textPrimary),
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],
@@ -560,6 +622,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
                   IconButton(
                     icon: const Icon(Icons.close_rounded, color: Colors.white, size: 28),
                     onPressed: () {
+                      HapticFeedback.lightImpact();
                       setState(() {
                         _showScanner = false;
                       });
@@ -583,7 +646,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
               width: 280,
               height: 380,
               decoration: BoxDecoration(
-                border: Border.all(color: AppColors.accent, width: 2),
+                border: Border.all(color: AppColors.primary, width: 2),
                 borderRadius: BorderRadius.circular(24),
               ),
               child: ClipRRect(
@@ -599,7 +662,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: const [
                               Icon(Icons.receipt_rounded, color: Colors.white38, size: 72),
-                              SizedBox(height: 12),
+                              const SizedBox(height: 12),
                               Text(
                                 'Arahkan struk belanja\nke dalam bingkai',
                                 textAlign: TextAlign.center,
@@ -623,10 +686,10 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
                             child: Container(
                               height: 3,
                               decoration: BoxDecoration(
-                                color: AppColors.accent,
+                                color: AppColors.primary,
                                 boxShadow: [
                                   BoxShadow(
-                                    color: AppColors.accent.withValues(alpha: 0.8),
+                                    color: AppColors.primary.withValues(alpha: 0.8),
                                     blurRadius: 8,
                                     spreadRadius: 2,
                                   )
@@ -646,7 +709,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: const [
                               CircularProgressIndicator(
-                                valueColor: AlwaysStoppedAnimation<Color>(AppColors.accent),
+                                valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
                               ),
                               SizedBox(height: 16),
                               Text(

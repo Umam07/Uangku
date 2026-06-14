@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -148,13 +149,15 @@ class _ReportScreenState extends State<ReportScreen> {
   }
 
   Color _getCategoryColor(String category) {
-    if (category.contains('🍔') || category.contains('Makanan')) return AppColors.danger;
-    if (category.contains('🚗') || category.contains('Transport')) return Colors.blue;
-    if (category.contains('🛒') || category.contains('Belanja')) return AppColors.accent;
+    if (category.contains('🍔') || category.contains('Makanan')) return AppColors.expenseRed;
+    if (category.contains('🚗') || category.contains('Transport')) return AppColors.infoBlue;
+    if (category.contains('🛒') || category.contains('Belanja')) return AppColors.warnOrange;
     if (category.contains('🧾') || category.contains('Tagihan')) return Colors.purple;
     if (category.contains('🎬') || category.contains('Hiburan')) return Colors.pink;
     if (category.contains('💊') || category.contains('Kesehatan')) return Colors.redAccent;
     if (category.contains('🐷') || category.contains('Tabungan')) return Colors.teal;
+    if (category.contains('💰') || category.contains('Gaji')) return AppColors.incomeGreen;
+    if (category.contains('🎁') || category.contains('Bonus')) return Colors.amber;
     return Colors.cyan;
   }
 
@@ -209,13 +212,13 @@ class _ReportScreenState extends State<ReportScreen> {
           barRods: [
             BarChartRodData(
               toY: dayExpense,
-              color: AppColors.danger,
+              color: AppColors.expenseRed,
               width: 8,
               borderRadius: BorderRadius.circular(3),
             ),
             BarChartRodData(
               toY: dayIncome,
-              color: AppColors.accent,
+              color: AppColors.incomeGreen,
               width: 8,
               borderRadius: BorderRadius.circular(3),
             ),
@@ -350,7 +353,7 @@ class _ReportScreenState extends State<ReportScreen> {
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: _currentYearSavings >= 0 ? AppColors.primary : AppColors.danger,
+                        color: _currentYearSavings >= 0 ? AppColors.incomeGreen : AppColors.expenseRed,
                         fontFeatures: const [FontFeature.tabularFigures()],
                       ),
                     ),
@@ -413,8 +416,8 @@ class _ReportScreenState extends State<ReportScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
                       color: _isSavingsIncreased 
-                          ? Colors.green.withValues(alpha: 0.12)
-                          : AppColors.danger.withValues(alpha: 0.08),
+                          ? AppColors.incomeGreen.withValues(alpha: 0.12)
+                          : AppColors.expenseRed.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Row(
@@ -425,7 +428,7 @@ class _ReportScreenState extends State<ReportScreen> {
                               ? Icons.arrow_upward_rounded 
                               : Icons.arrow_downward_rounded,
                           size: 13,
-                          color: _isSavingsIncreased ? Colors.green : AppColors.danger,
+                          color: _isSavingsIncreased ? AppColors.incomeGreen : AppColors.expenseRed,
                         ),
                         const SizedBox(width: 4),
                         Text(
@@ -433,7 +436,7 @@ class _ReportScreenState extends State<ReportScreen> {
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
-                            color: _isSavingsIncreased ? Colors.green : AppColors.danger,
+                            color: _isSavingsIncreased ? AppColors.incomeGreen : AppColors.expenseRed,
                           ),
                         ),
                       ],
@@ -445,7 +448,7 @@ class _ReportScreenState extends State<ReportScreen> {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
-                      color: _isSavingsIncreased ? Colors.green : AppColors.danger,
+                      color: _isSavingsIncreased ? AppColors.incomeGreen : AppColors.expenseRed,
                     ),
                   ),
                 ],
@@ -709,14 +712,19 @@ class _ReportScreenState extends State<ReportScreen> {
     final periods = ['Harian', 'Mingguan', 'Bulanan'];
     final selectedIndex = periods.indexOf(_selectedPeriod);
     final double alignX = -1.0 + (selectedIndex * 1.0);
+    
+    final trackColor = isDark ? AppColors.fillTrackDark : AppColors.fillTrack;
+    final activePillColor = isDark ? Colors.white.withValues(alpha: 0.15) : Colors.white;
+    final inactiveTextColor = isDark ? AppColors.labelTertiaryDark : AppColors.labelTertiary;
+    final activeTextColor = isDark ? AppColors.textPrimaryDark : AppColors.textPrimary;
 
     return Container(
       width: double.infinity,
       height: 46,
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1C1C1E) : const Color(0xFFEFEFF0),
-        borderRadius: BorderRadius.circular(14),
+        color: trackColor,
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Stack(
         children: [
@@ -729,13 +737,13 @@ class _ReportScreenState extends State<ReportScreen> {
               widthFactor: 1 / 3,
               child: Container(
                 decoration: BoxDecoration(
-                  color: isDark ? Colors.white.withValues(alpha: 0.12) : Colors.white,
+                  color: activePillColor,
                   borderRadius: BorderRadius.circular(10),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.06),
-                      blurRadius: 4,
-                      offset: const Offset(0, 1.5),
+                      blurRadius: 3,
+                      offset: const Offset(0, 1),
                     )
                   ],
                 ),
@@ -769,8 +777,8 @@ class _ReportScreenState extends State<ReportScreen> {
                           fontSize: 13,
                           fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                           color: isSelected
-                              ? (isDark ? Colors.white : const Color(0xFF1C1C1E))
-                              : const Color(0xFF8E8E93),
+                              ? activeTextColor
+                              : inactiveTextColor,
                         ),
                       ),
                     ),
@@ -789,15 +797,15 @@ class _ReportScreenState extends State<ReportScreen> {
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: isDark ? AppColors.surfaceDark : Colors.white,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: isDark ? 0.05 : 0.02),
-            blurRadius: 15,
-            offset: const Offset(0, 5),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -809,7 +817,7 @@ class _ReportScreenState extends State<ReportScreen> {
                 child: _buildSummaryItem(
                   'Pemasukan',
                   _totalIncome,
-                  AppColors.accent,
+                  AppColors.incomeGreen,
                   '💰',
                 ),
               ),
@@ -823,7 +831,7 @@ class _ReportScreenState extends State<ReportScreen> {
                 child: _buildSummaryItem(
                   'Pengeluaran',
                   _totalExpense,
-                  AppColors.danger,
+                  AppColors.expenseRed,
                   '💸',
                 ),
               ),
@@ -831,7 +839,7 @@ class _ReportScreenState extends State<ReportScreen> {
           ),
           const SizedBox(height: 16),
           const Divider(height: 1),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -848,7 +856,7 @@ class _ReportScreenState extends State<ReportScreen> {
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: saving >= 0 ? Colors.green : AppColors.danger,
+                  color: saving >= 0 ? AppColors.incomeGreen : AppColors.expenseRed,
                   fontFeatures: const [FontFeature.tabularFigures()],
                 ),
               ),
@@ -1117,7 +1125,11 @@ class _ReportScreenState extends State<ReportScreen> {
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     itemCount: sortedCategories.length,
-                    separatorBuilder: (context, index) => const Divider(height: 24),
+                    separatorBuilder: (context, index) => Divider(
+                      height: 20, 
+                      thickness: 0.5, 
+                      color: isDark ? AppColors.separatorDark : AppColors.separator,
+                    ),
                     itemBuilder: (context, index) {
                       final item = sortedCategories[index];
                       final category = item.key;
@@ -1134,7 +1146,7 @@ class _ReportScreenState extends State<ReportScreen> {
                             width: 40,
                             height: 40,
                             decoration: BoxDecoration(
-                              color: _getCategoryColor(category).withValues(alpha: 0.1),
+                              color: _getCategoryColor(category).withValues(alpha: 0.08),
                               shape: BoxShape.circle,
                             ),
                             child: Center(
@@ -1174,7 +1186,7 @@ class _ReportScreenState extends State<ReportScreen> {
                             style: const TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 14,
-                              color: AppColors.danger,
+                              color: AppColors.expenseRed,
                               fontFeatures: [FontFeature.tabularFigures()],
                             ),
                           ),

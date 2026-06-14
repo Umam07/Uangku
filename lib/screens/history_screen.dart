@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../services/transaction_service.dart';
@@ -21,11 +22,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   final List<Map<String, dynamic>> _categoriesData = [
     {'name': 'Semua', 'emoji': '🔍', 'color': AppColors.primary},
-    {'name': 'Gaji', 'emoji': '💰', 'color': Colors.green},
+    {'name': 'Gaji', 'emoji': '💰', 'color': AppColors.incomeGreen},
     {'name': 'Bonus', 'emoji': '🎁', 'color': Colors.amber},
-    {'name': 'Makanan', 'emoji': '🍔', 'color': AppColors.danger},
-    {'name': 'Transportasi', 'emoji': '🚗', 'color': Colors.blue},
-    {'name': 'Belanja', 'emoji': '🛒', 'color': AppColors.accent},
+    {'name': 'Makanan', 'emoji': '🍔', 'color': AppColors.expenseRed},
+    {'name': 'Transportasi', 'emoji': '🚗', 'color': AppColors.infoBlue},
+    {'name': 'Belanja', 'emoji': '🛒', 'color': AppColors.warnOrange},
     {'name': 'Tagihan', 'emoji': '🧾', 'color': Colors.purple},
     {'name': 'Hiburan', 'emoji': '🎬', 'color': Colors.pink},
     {'name': 'Kesehatan', 'emoji': '💊', 'color': Colors.redAccent},
@@ -263,7 +264,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
         behavior: SnackBarBehavior.floating,
         action: SnackBarAction(
           label: 'Batal',
-          textColor: AppColors.accent,
+          textColor: AppColors.primary,
           onPressed: () async {
             // Restore transaction
             await _transactionService.addTransaction(tx);
@@ -609,10 +610,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                   final tx = txList[txIndex];
                                   final isIncome = tx.isIncome;
                                   final emoji = tx.category.split(' ').first;
-                                  final catName = tx.category
-                                      .split(' ')
-                                      .skip(1)
-                                      .join(' ');
+                                  final catName = tx.category.split(' ').skip(1).join(' ');
 
                                   return Dismissible(
                                     key: Key(tx.id),
@@ -625,8 +623,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                         horizontal: 20.0,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: AppColors.danger,
-                                        borderRadius: BorderRadius.circular(18),
+                                        color: AppColors.expenseRed,
+                                        borderRadius: BorderRadius.circular(16),
                                       ),
                                       child: const Icon(
                                         Icons.delete_sweep_rounded,
@@ -637,13 +635,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                     child: Container(
                                       padding: const EdgeInsets.symmetric(
                                         horizontal: 16,
-                                        vertical: 14,
+                                        vertical: 12,
                                       ),
                                       decoration: BoxDecoration(
                                         color: isDark
                                             ? AppColors.surfaceDark
                                             : AppColors.surface,
-                                        borderRadius: BorderRadius.circular(18),
+                                        borderRadius: BorderRadius.circular(16),
                                         boxShadow: [
                                           BoxShadow(
                                             color: Colors.black.withValues(
@@ -656,16 +654,16 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                       ),
                                       child: Row(
                                         children: [
-                                          // Category Emoji Circle
+                                          // Category Emoji Circle 40x40 with low-opacity pastel background
                                           Container(
-                                            width: 44,
-                                            height: 44,
+                                            width: 40,
+                                            height: 40,
                                             decoration: BoxDecoration(
                                               color: isIncome
-                                                  ? AppColors.accent.withValues(
+                                                  ? AppColors.incomeGreen.withValues(
                                                       alpha: 0.12,
                                                     )
-                                                  : AppColors.danger.withValues(
+                                                  : AppColors.expenseRed.withValues(
                                                       alpha: 0.08,
                                                     ),
                                               shape: BoxShape.circle,
@@ -674,7 +672,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                               child: Text(
                                                 emoji,
                                                 style: const TextStyle(
-                                                  fontSize: 20,
+                                                  fontSize: 18,
                                                 ),
                                               ),
                                             ),
@@ -720,7 +718,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                               ],
                                             ),
                                           ),
-                                          // Amount
+                                          // Amount with tabular figures
                                           Column(
                                             crossAxisAlignment:
                                                 CrossAxisAlignment.end,
@@ -731,8 +729,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                                   fontSize: 15,
                                                   fontWeight: FontWeight.bold,
                                                   color: isIncome
-                                                      ? AppColors.accent
-                                                      : AppColors.danger,
+                                                      ? AppColors.incomeGreen
+                                                      : AppColors.expenseRed,
+                                                  fontFeatures: const [FontFeature.tabularFigures()],
                                                 ),
                                               ),
                                               const SizedBox(height: 2),

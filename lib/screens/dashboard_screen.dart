@@ -15,37 +15,56 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   int _currentIndex = 0;
+  int _reloadCount = 0;
 
   void _onTabTapped(int index) {
-    setState(() {
-      _currentIndex = index;
-    });
+    if (index == 2) {
+      _showAddTransactionSheet();
+    } else {
+      setState(() {
+        _currentIndex = index;
+      });
+    }
   }
 
   void _onTransactionSaved() {
     setState(() {
+      _reloadCount++;
       _currentIndex = 0; // Automatically switch back to HomeTab
     });
   }
 
+  void _showAddTransactionSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => AddTransactionScreen(
+        onTransactionSaved: () {
+          Navigator.pop(context); // Close bottom sheet
+          _onTransactionSaved(); // Refresh active screens
+        },
+      ),
+    );
+  }
+
   Widget _buildActiveScreen() {
+    final key = ValueKey('tab_${_currentIndex}_$_reloadCount');
     switch (_currentIndex) {
       case 0:
         return HomeTab(
+          key: key,
           onNavigateToHistory: () => _onTabTapped(1),
         );
       case 1:
-        return const HistoryScreen();
-      case 2:
-        return AddTransactionScreen(
-          onTransactionSaved: _onTransactionSaved,
-        );
+        return HistoryScreen(key: key);
       case 3:
-        return const ReportScreen();
+        return ReportScreen(key: key);
       case 4:
-        return const SettingsScreen();
+        return SettingsScreen(key: key);
       default:
         return HomeTab(
+          key: key,
           onNavigateToHistory: () => _onTabTapped(1),
         );
     }

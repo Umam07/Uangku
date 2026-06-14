@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../theme/app_colors.dart';
@@ -66,13 +67,15 @@ class _HomeTabState extends State<HomeTab> {
   }
 
   Color _getCategoryColor(String category) {
-    if (category.contains('🍔') || category.contains('Makanan')) return AppColors.danger;
-    if (category.contains('🚗') || category.contains('Transport')) return Colors.blue;
-    if (category.contains('🛒') || category.contains('Belanja')) return AppColors.accent;
+    if (category.contains('🍔') || category.contains('Makanan')) return AppColors.expenseRed;
+    if (category.contains('🚗') || category.contains('Transport')) return AppColors.infoBlue;
+    if (category.contains('🛒') || category.contains('Belanja')) return AppColors.warnOrange;
     if (category.contains('🧾') || category.contains('Tagihan')) return Colors.purple;
     if (category.contains('🎬') || category.contains('Hiburan')) return Colors.pink;
     if (category.contains('💊') || category.contains('Kesehatan')) return Colors.redAccent;
     if (category.contains('🐷') || category.contains('Tabungan')) return Colors.teal;
+    if (category.contains('💰') || category.contains('Gaji')) return AppColors.incomeGreen;
+    if (category.contains('🎁') || category.contains('Bonus')) return Colors.amber;
     return Colors.cyan;
   }
 
@@ -133,7 +136,7 @@ class _HomeTabState extends State<HomeTab> {
           color: AppColors.primary,
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(20.0, 8.0, 20.0, 100.0), // Space for floating navbar
+            padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 100.0), // Space for floating navbar
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -241,19 +244,19 @@ class _HomeTabState extends State<HomeTab> {
   Widget _buildBalanceCard(bool isDark, ThemeData theme) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(24.0),
+      padding: const EdgeInsets.all(16.0),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [AppColors.primary, AppColors.accent],
+          colors: [AppColors.primary, AppColors.primaryDark],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.3),
-            blurRadius: 15,
-            offset: const Offset(0, 8),
+            color: AppColors.primary.withValues(alpha: 0.15),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -273,9 +276,10 @@ class _HomeTabState extends State<HomeTab> {
             _formatCurrency(_totalBalance),
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 30,
+              fontSize: 34,
               fontWeight: FontWeight.bold,
               letterSpacing: -0.5,
+              fontFeatures: [FontFeature.tabularFigures()],
             ),
           ),
           const SizedBox(height: 24),
@@ -308,6 +312,7 @@ class _HomeTabState extends State<HomeTab> {
                               color: Colors.white,
                               fontSize: 13,
                               fontWeight: FontWeight.bold,
+                              fontFeatures: [FontFeature.tabularFigures()],
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -351,6 +356,7 @@ class _HomeTabState extends State<HomeTab> {
                               color: Colors.white,
                               fontSize: 13,
                               fontWeight: FontWeight.bold,
+                              fontFeatures: [FontFeature.tabularFigures()],
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -542,10 +548,10 @@ class _HomeTabState extends State<HomeTab> {
         final catName = tx.category.split(' ').skip(1).join(' ');
 
         return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
             color: isDark ? AppColors.surfaceDark : AppColors.surface,
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: isDark ? 0.05 : 0.02),
@@ -556,20 +562,20 @@ class _HomeTabState extends State<HomeTab> {
           ),
           child: Row(
             children: [
-              // Emoji Circle
+              // Emoji Circle 40x40 with low-opacity pastel background
               Container(
-                width: 44,
-                height: 44,
+                width: 40,
+                height: 40,
                 decoration: BoxDecoration(
                   color: isIncome
-                      ? AppColors.accent.withValues(alpha: 0.12)
-                      : AppColors.danger.withValues(alpha: 0.08),
+                      ? AppColors.incomeGreen.withValues(alpha: 0.12)
+                      : AppColors.expenseRed.withValues(alpha: 0.08),
                   shape: BoxShape.circle,
                 ),
                 child: Center(
                   child: Text(
                     emoji,
-                    style: const TextStyle(fontSize: 20),
+                    style: const TextStyle(fontSize: 18),
                   ),
                 ),
               ),
@@ -598,13 +604,14 @@ class _HomeTabState extends State<HomeTab> {
                   ],
                 ),
               ),
-              // Nominal
+              // Nominal with tabular figures
               Text(
                 '${isIncome ? '+' : '-'}${_formatCurrency(tx.amount).replaceFirst('Rp ', '')}',
                 style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.bold,
-                  color: isIncome ? AppColors.accent : AppColors.danger,
+                  color: isIncome ? AppColors.incomeGreen : AppColors.expenseRed,
+                  fontFeatures: const [FontFeature.tabularFigures()],
                 ),
               ),
             ],

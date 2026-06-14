@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../theme/app_colors.dart';
 
 class GlassmorphicNavbar extends StatelessWidget {
@@ -72,7 +73,10 @@ class GlassmorphicNavbar extends StatelessWidget {
     return Expanded(
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTap: () => onTap(index),
+        onTap: () {
+          HapticFeedback.lightImpact();
+          onTap(index);
+        },
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -116,7 +120,10 @@ class GlassmorphicNavbar extends StatelessWidget {
     final isSelected = currentIndex == 2;
 
     return GestureDetector(
-      onTap: () => onTap(2),
+      onTap: () {
+        HapticFeedback.mediumImpact();
+        onTap(2);
+      },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),
         curve: Curves.easeOutBack,
