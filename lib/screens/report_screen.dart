@@ -22,6 +22,14 @@ class _ReportScreenState extends State<ReportScreen> {
   Map<String, double> _categoryExpenses = {};
   Map<String, int> _categoryTransactionCount = {};
 
+  // YoY Savings & monthly savings trend variables
+  double _currentYearSavings = 0;
+  double _lastYearSavings = 0;
+  double _savingsPercentageChange = 0;
+  bool _isSavingsIncreased = true;
+  List<double> _monthlySavingsData = List.filled(12, 0.0);
+  bool _showSavingsGraph = true;
+
   @override
   void initState() {
     super.initState();
@@ -32,7 +40,58 @@ class _ReportScreenState extends State<ReportScreen> {
     setState(() => _isLoading = true);
     final txs = await _transactionService.getTransactions();
     
-    // Filter based on selected period
+    // 1. Calculate historical savings data
+    final now = DateTime.now();
+    final currentYear = now.year;
+    final lastYear = currentYear - 1;
+
+    double currentYearIncome = 0;
+    double currentYearExpense = 0;
+    double lastYearIncome = 0;
+    double lastYearExpense = 0;
+
+    final List<double> monthlySavings = List.filled(12, 0.0);
+
+    for (var tx in txs) {
+      if (tx.date.year == currentYear) {
+        if (tx.isIncome) {
+          currentYearIncome += tx.amount;
+        } else {
+          currentYearExpense += tx.amount;
+        }
+
+        final monthIdx = tx.date.month - 1;
+        if (monthIdx >= 0 && monthIdx < 12) {
+          if (tx.isIncome) {
+            monthlySavings[monthIdx] += tx.amount;
+          } else {
+            monthlySavings[monthIdx] -= tx.amount;
+          }
+        }
+      } else if (tx.date.year == lastYear) {
+        if (tx.isIncome) {
+          lastYearIncome += tx.amount;
+        } else {
+          lastYearExpense += tx.amount;
+        }
+      }
+    }
+
+    final currentYearSavings = currentYearIncome - currentYearExpense;
+    final lastYearSavings = lastYearIncome - lastYearExpense;
+
+    double percentageChange = 0;
+    bool increased = true;
+
+    if (lastYearSavings != 0) {
+      percentageChange = ((currentYearSavings - lastYearSavings) / lastYearSavings.abs()) * 100;
+      increased = currentYearSavings >= lastYearSavings;
+    } else if (currentYearSavings != 0) {
+      percentageChange = 100.0;
+      increased = currentYearSavings > 0;
+    }
+
+    // 2. Filter based on selected period
     final filteredTxs = _filterTransactionsByPeriod(txs);
     
     double income = 0;
@@ -56,6 +115,12 @@ class _ReportScreenState extends State<ReportScreen> {
       _totalExpense = expense;
       _categoryExpenses = catExpenses;
       _categoryTransactionCount = catCounts;
+
+      _currentYearSavings = currentYearSavings;
+      _lastYearSavings = lastYearSavings;
+      _savingsPercentageChange = percentageChange.abs();
+      _isSavingsIncreased = increased;
+      _monthlySavingsData = monthlySavings;
       _isLoading = false;
     });
   }
@@ -160,6 +225,416 @@ class _ReportScreenState extends State<ReportScreen> {
     return groups;
   }
 
+  String _getMonthNameShort(int index) {
+    final months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
+      'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'
+    ];
+    if (index >= 0 && index < 12) {
+      return months[index];
+    }
+    return '';
+  }
+
+  Widget _buildSavingsComparisonCard(bool isDark, ThemeData theme) {
+    final now = DateTime.now();
+    final currentYear = now.year;
+    final lastYear = currentYear - 1;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 24),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.surfaceDark : Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.05),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.05 : 0.02),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.12),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.savings_rounded,
+                      color: AppColors.primary,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Perbandingan Tabungan',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                      color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
+                    ),
+                  ),
+                ],
+              ),
+              // Graph Toggle Pill
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _showSavingsGraph = !_showSavingsGraph;
+                  });
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: _showSavingsGraph 
+                        ? AppColors.primary.withValues(alpha: 0.12)
+                        : (isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05)),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        _showSavingsGraph ? Icons.show_chart_rounded : Icons.legend_toggle_rounded,
+                        size: 14,
+                        color: _showSavingsGraph ? AppColors.primary : AppColors.textSecondary,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        _showSavingsGraph ? 'Sembunyikan Grafik' : 'Tampilkan Grafik',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: _showSavingsGraph ? AppColors.primary : AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              // This Year savings
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Tabungan Tahun Ini ($currentYear)',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _formatCurrency(_currentYearSavings),
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: _currentYearSavings >= 0 ? AppColors.primary : AppColors.danger,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Separator line
+              Container(
+                width: 1,
+                height: 40,
+                color: isDark ? Colors.white12 : Colors.black12,
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+              ),
+              // Last Year savings
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Tabungan Tahun Lalu ($lastYear)',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _formatCurrency(_lastYearSavings),
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          const Divider(height: 1),
+          const SizedBox(height: 12),
+          // Comparison Pill Indicator
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Performa tabungan:',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondary,
+                ),
+              ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: _isSavingsIncreased 
+                          ? Colors.green.withValues(alpha: 0.12)
+                          : AppColors.danger.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          _isSavingsIncreased 
+                              ? Icons.arrow_upward_rounded 
+                              : Icons.arrow_downward_rounded,
+                          size: 13,
+                          color: _isSavingsIncreased ? Colors.green : AppColors.danger,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${_savingsPercentageChange.toStringAsFixed(1)}%',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: _isSavingsIncreased ? Colors.green : AppColors.danger,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    _isSavingsIncreased ? 'Meningkat' : 'Menurun',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: _isSavingsIncreased ? Colors.green : AppColors.danger,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSavingsChart(bool isDark, ThemeData theme) {
+    final now = DateTime.now();
+    final currentYear = now.year;
+    
+    final List<FlSpot> spots = [];
+    int maxMonth = now.month;
+    for (int i = 0; i < maxMonth; i++) {
+      spots.add(FlSpot(i.toDouble(), _monthlySavingsData[i]));
+    }
+
+    if (spots.isEmpty) return const SizedBox();
+
+    double minY = spots.map((s) => s.y).reduce((a, b) => a < b ? a : b);
+    double maxY = spots.map((s) => s.y).reduce((a, b) => a > b ? a : b);
+    
+    final yRange = (maxY - minY).abs();
+    if (yRange == 0) {
+      minY = minY - 1000000;
+      maxY = maxY + 1000000;
+    } else {
+      minY = minY - (yRange * 0.15);
+      maxY = maxY + (yRange * 0.15);
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 24),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.surfaceDark : Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.05),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.05 : 0.02),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Tren Tabungan Bulanan ($currentYear)',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                  color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
+                ),
+              ),
+              Text(
+                'Dalam Rupiah (IDR)',
+                style: TextStyle(
+                  fontSize: 10,
+                  color: AppColors.textSecondary,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          SizedBox(
+            height: 160,
+            child: LineChart(
+              LineChartData(
+                minX: 0,
+                maxX: (maxMonth - 1).toDouble(),
+                minY: minY,
+                maxY: maxY,
+                gridData: FlGridData(
+                  show: true,
+                  drawVerticalLine: false,
+                  drawHorizontalLine: true,
+                  getDrawingHorizontalLine: (value) {
+                    final isZero = value.abs() < 100;
+                    return FlLine(
+                      color: isZero 
+                          ? (isDark ? Colors.white38 : Colors.black38) 
+                          : (isDark ? Colors.white10 : Colors.black12),
+                      strokeWidth: isZero ? 1.5 : 0.8,
+                      dashArray: isZero ? null : [4, 4],
+                    );
+                  },
+                ),
+                borderData: FlBorderData(show: false),
+                titlesData: FlTitlesData(
+                  show: true,
+                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 22,
+                      interval: 1,
+                      getTitlesWidget: (value, meta) {
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 6.0),
+                          child: Text(
+                            _getMonthNameShort(value.toInt()),
+                            style: const TextStyle(
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+                lineTouchData: LineTouchData(
+                  enabled: true,
+                  touchTooltipData: LineTouchTooltipData(
+                    tooltipBgColor: isDark 
+                        ? AppColors.surfaceDark.withValues(alpha: 0.95) 
+                        : Colors.white.withValues(alpha: 0.95),
+                    tooltipBorder: BorderSide(
+                      color: AppColors.primary.withValues(alpha: 0.3),
+                      width: 1,
+                    ),
+                    getTooltipItems: (List<LineBarSpot> touchedSpots) {
+                      return touchedSpots.map((spot) {
+                        final monthStr = _getMonthNameShort(spot.x.toInt());
+                        final valStr = _formatCurrency(spot.y);
+                        return LineTooltipItem(
+                          '$monthStr: $valStr',
+                          TextStyle(
+                            color: isDark ? Colors.white : AppColors.textPrimary,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 11,
+                          ),
+                        );
+                      }).toList();
+                    },
+                  ),
+                ),
+                lineBarsData: [
+                  LineChartBarData(
+                    spots: spots,
+                    isCurved: true,
+                    color: AppColors.primary,
+                    barWidth: 3.5,
+                    isStrokeCapRound: true,
+                    dotData: FlDotData(
+                      show: true,
+                      getDotPainter: (spot, percent, barData, index) {
+                        return FlDotCirclePainter(
+                          radius: 4.5,
+                          color: AppColors.primary,
+                          strokeWidth: 2,
+                          strokeColor: isDark ? AppColors.surfaceDark : Colors.white,
+                        );
+                      },
+                    ),
+                    belowBarData: BarAreaData(
+                      show: true,
+                      gradient: LinearGradient(
+                        colors: [
+                          AppColors.primary.withValues(alpha: 0.25),
+                          AppColors.primary.withValues(alpha: 0.0),
+                        ],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -204,6 +679,16 @@ class _ReportScreenState extends State<ReportScreen> {
                       if (_selectedPeriod == 'Mingguan') ...[
                         _buildBarChartCard(isDark, theme),
                         const SizedBox(height: 24),
+                      ],
+
+                      // Monthly Savings Trend Chart and Comparison (only relevant if Monthly selected)
+                      if (_selectedPeriod == 'Bulanan') ...[
+                        _buildSavingsComparisonCard(isDark, theme),
+                        AnimatedSize(
+                          duration: const Duration(milliseconds: 250),
+                          curve: Curves.easeInOut,
+                          child: _showSavingsGraph ? _buildSavingsChart(isDark, theme) : const SizedBox(),
+                        ),
                       ],
 
                       // Category breakdown donut chart

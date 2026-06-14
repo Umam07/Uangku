@@ -63,7 +63,22 @@ class TransactionService {
 
     try {
       final List<dynamic> decoded = json.decode(txJson);
-      return decoded.map((item) => Transaction.fromJson(item)).toList();
+      final list = decoded.map((item) => Transaction.fromJson(item)).toList();
+      
+      // Auto-inject last year's historical data for comparison if missing
+      final now = DateTime.now();
+      final hasLastYear = list.any((tx) => tx.date.year == now.year - 1);
+      if (!hasLastYear) {
+        final defaults = _getDefaultTransactions();
+        final historical = defaults.where((tx) => 
+          tx.date.year == now.year - 1 || 
+          (tx.date.year == now.year && tx.date.month < now.month)
+        );
+        list.addAll(historical);
+        await saveTransactions(list);
+      }
+      
+      return list;
     } catch (e) {
       // Reset if corruption occurs
       return [];
@@ -95,9 +110,12 @@ class TransactionService {
   // Generate default initial transactions
   List<Transaction> _getDefaultTransactions() {
     final now = DateTime.now();
-    return [
+    final List<Transaction> list = [];
+
+    // 1. Current month's recent transactions
+    list.addAll([
       Transaction(
-        id: 'tx1',
+        id: 'tx_c1',
         title: 'Makan Siang Ramen',
         category: '🍔 Makanan',
         amount: 75000,
@@ -105,7 +123,7 @@ class TransactionService {
         date: now.subtract(const Duration(minutes: 30)),
       ),
       Transaction(
-        id: 'tx2',
+        id: 'tx_c2',
         title: 'Grab Car Ongkos',
         category: '🚗 Transportasi',
         amount: 45000,
@@ -113,7 +131,7 @@ class TransactionService {
         date: now.subtract(const Duration(hours: 4)),
       ),
       Transaction(
-        id: 'tx3',
+        id: 'tx_c3',
         title: 'Gaji Bulanan',
         category: '💰 Gaji',
         amount: 15000000,
@@ -121,7 +139,7 @@ class TransactionService {
         date: now.subtract(const Duration(days: 1)),
       ),
       Transaction(
-        id: 'tx4',
+        id: 'tx_c4',
         title: 'Supermarket Bulanan',
         category: '🛒 Belanja',
         amount: 430000,
@@ -129,13 +147,94 @@ class TransactionService {
         date: now.subtract(const Duration(days: 2)),
       ),
       Transaction(
-        id: 'tx5',
+        id: 'tx_c5',
         title: 'Bayar Tagihan Listrik',
         category: '🧾 Tagihan',
         amount: 150000,
         isIncome: false,
         date: now.subtract(const Duration(days: 3)),
       ),
-    ];
+    ]);
+
+    // 2. Procedural transactions for earlier months of the current year (months 1 to currentMonth - 1)
+    final currentYear = now.year;
+    for (int month = 1; month < now.month; month++) {
+      final baseDate = DateTime(currentYear, month, 15);
+      
+      // Income
+      list.add(Transaction(
+        id: 'tx_${currentYear}_${month}_inc',
+        title: 'Gaji Bulanan',
+        category: '💰 Gaji',
+        amount: 15000000,
+        isIncome: true,
+        date: baseDate,
+      ));
+
+      // Expenses
+      list.add(Transaction(
+        id: 'tx_${currentYear}_${month}_exp1',
+        title: 'Belanja Bulanan',
+        category: '🛒 Belanja',
+        amount: 8000000 + (month % 3) * 500000,
+        isIncome: false,
+        date: baseDate.add(const Duration(days: 2)),
+      ));
+
+      list.add(Transaction(
+        id: 'tx_${currentYear}_${month}_exp2',
+        title: 'Bayar Tagihan',
+        category: '🧾 Tagihan',
+        amount: 1200000 + (month % 2) * 200000,
+        isIncome: false,
+        date: baseDate.subtract(const Duration(days: 5)),
+      ));
+
+      list.add(Transaction(
+        id: 'tx_${currentYear}_${month}_exp3',
+        title: 'Kulineran',
+        category: '🍔 Makanan',
+        amount: 800000 + (month % 4) * 100000,
+        isIncome: false,
+        date: baseDate.add(const Duration(days: 4)),
+      ));
+    }
+
+    // 3. Procedural transactions for last year (2025, months 1 to 12)
+    final lastYear = currentYear - 1;
+    for (int month = 1; month <= 12; month++) {
+      final baseDate = DateTime(lastYear, month, 15);
+
+      // Income
+      list.add(Transaction(
+        id: 'tx_${lastYear}_${month}_inc',
+        title: 'Gaji Bulanan',
+        category: '💰 Gaji',
+        amount: 12000000,
+        isIncome: true,
+        date: baseDate,
+      ));
+
+      // Expenses
+      list.add(Transaction(
+        id: 'tx_${lastYear}_${month}_exp1',
+        title: 'Belanja Bulanan',
+        category: '🛒 Belanja',
+        amount: 7000000 + (month % 3) * 400000,
+        isIncome: false,
+        date: baseDate.add(const Duration(days: 2)),
+      ));
+
+      list.add(Transaction(
+        id: 'tx_${lastYear}_${month}_exp2',
+        title: 'Bayar Tagihan',
+        category: '🧾 Tagihan',
+        amount: 1000000 + (month % 2) * 150000,
+        isIncome: false,
+        date: baseDate.subtract(const Duration(days: 5)),
+      ));
+    }
+
+    return list;
   }
 }
