@@ -143,20 +143,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   ),
                 ),
                 const Divider(height: 1),
-                const SizedBox(height: 20),
+                const SizedBox(height: 12),
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                  child: GridView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: ListView.separated(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 3,
-                          crossAxisSpacing: 16,
-                          mainAxisSpacing: 20,
-                          childAspectRatio: 0.95,
-                        ),
                     itemCount: _categoriesData.length,
+                    separatorBuilder: (context, index) => const SizedBox(height: 6),
                     itemBuilder: (context, index) {
                       final cat = _categoriesData[index];
                       final catName = cat['name'] as String;
@@ -164,7 +158,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       final catColor = cat['color'] as Color;
                       final isSelected = _selectedCategory == catName;
 
-                      return GestureDetector(
+                      return InkWell(
                         onTap: () {
                           setState(() {
                             _selectedCategory = catName;
@@ -172,72 +166,102 @@ class _HistoryScreenState extends State<HistoryScreen> {
                           _applyFilters();
                           Navigator.pop(context);
                         },
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
-                              width: 56,
-                              height: 56,
-                              decoration: BoxDecoration(
-                                color: isSelected
-                                    ? catColor.withValues(alpha: 0.15)
-                                    : (isDark
-                                          ? Colors.white.withValues(alpha: 0.06)
-                                          : Colors.black.withValues(
-                                              alpha: 0.04,
-                                            )),
-                                shape: BoxShape.circle,
-                                border: Border.all(
+                        borderRadius: BorderRadius.circular(12),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 150),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? AppColors.primary.withValues(alpha: 0.05)
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              // Circular icon container (24px to 32px max)
+                              Container(
+                                width: 32,
+                                height: 32,
+                                decoration: BoxDecoration(
                                   color: isSelected
-                                      ? catColor
-                                      : Colors.transparent,
-                                  width: 2,
+                                      ? catColor.withValues(alpha: 0.15)
+                                      : (isDark
+                                          ? Colors.white.withValues(alpha: 0.06)
+                                          : Colors.black.withValues(alpha: 0.04)),
+                                  shape: BoxShape.circle,
                                 ),
-                                boxShadow: isSelected
-                                    ? [
-                                        BoxShadow(
-                                          color: catColor.withValues(
-                                            alpha: 0.25,
-                                          ),
-                                          blurRadius: 10,
-                                          offset: const Offset(0, 4),
+                                child: Center(
+                                  child: catName == 'Semua'
+                                      ? Icon(
+                                          Icons.tune_rounded,
+                                          size: 16,
+                                          color: isSelected
+                                              ? AppColors.primary
+                                              : (isDark
+                                                  ? Colors.white70
+                                                  : Colors.black54),
+                                        )
+                                      : Text(
+                                          catEmoji,
+                                          style: const TextStyle(fontSize: 16),
                                         ),
-                                      ]
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              // Category Name Text
+                              Expanded(
+                                child: Text(
+                                  catName,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                    color: isSelected
+                                        ? (isDark
+                                            ? AppColors.textPrimaryDark
+                                            : AppColors.textPrimary)
+                                        : (isDark
+                                            ? AppColors.textSecondaryDark
+                                            : AppColors.textSecondary),
+                                  ),
+                                ),
+                              ),
+                              // Selection Indicator (turns orange when selected)
+                              Container(
+                                width: 20,
+                                height: 20,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: isSelected
+                                      ? AppColors.primary
+                                      : Colors.transparent,
+                                  border: Border.all(
+                                    color: isSelected
+                                        ? AppColors.primary
+                                        : (isDark
+                                            ? Colors.white30
+                                            : Colors.black12),
+                                    width: 1.5,
+                                  ),
+                                ),
+                                child: isSelected
+                                    ? const Icon(
+                                        Icons.check_rounded,
+                                        size: 12,
+                                        color: Colors.white,
+                                      )
                                     : null,
                               ),
-                              child: Center(
-                                child: Text(
-                                  catEmoji,
-                                  style: const TextStyle(fontSize: 24),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              catName,
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: isSelected
-                                    ? FontWeight.bold
-                                    : FontWeight.w600,
-                                color: isSelected
-                                    ? catColor
-                                    : (isDark
-                                          ? AppColors.textPrimaryDark
-                                          : AppColors.textPrimary),
-                              ),
-                              textAlign: TextAlign.center,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       );
                     },
                   ),
                 ),
-                const SizedBox(height: 30),
+                const SizedBox(height: 20),
               ],
             ),
           ),
@@ -464,24 +488,26 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          // Emoji circle avatar
-                          Container(
-                            width: 20,
-                            height: 20,
-                            decoration: BoxDecoration(
-                              color: _activeCategoryData['color'].withValues(
-                                alpha: 0.25,
+                          if (_selectedCategory != 'Semua') ...[
+                            // Emoji circle avatar
+                            Container(
+                              width: 20,
+                              height: 20,
+                              decoration: BoxDecoration(
+                                color: _activeCategoryData['color'].withValues(
+                                  alpha: 0.25,
+                                ),
+                                shape: BoxShape.circle,
                               ),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Center(
-                              child: Text(
-                                _activeCategoryData['emoji'] as String,
-                                style: const TextStyle(fontSize: 11),
+                              child: Center(
+                                child: Text(
+                                  _activeCategoryData['emoji'] as String,
+                                  style: const TextStyle(fontSize: 11),
+                                ),
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 8),
+                            const SizedBox(width: 8),
+                          ],
                           // Category Name
                           Text(
                             _selectedCategory,
