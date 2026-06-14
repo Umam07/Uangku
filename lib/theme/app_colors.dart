@@ -5,7 +5,7 @@ class AppColors {
   static const Color primary = Color(0xFFEA580C);       // Warm Orange
   static const Color primaryDark = Color(0xFFC2410C);   // Darker Orange
   static const Color accent = Color(0xFFF59E0B);        // Amber (Income)
-  static const Color danger = Color(0xFFDC2626);        // Brick Red (Expense)
+  static const Color danger = Color(0xFFFF3B30);        // Apple Soft Red (Expense)
   static const Color background = Color(0xFFFBF5DD);    // Soft Cream
   static const Color surface = Color(0xFFFFFDF5);       // Ivory White
   static const Color textPrimary = Color(0xFF1C1008);   // Dark Brown

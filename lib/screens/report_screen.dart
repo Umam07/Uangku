@@ -243,7 +243,7 @@ class _ReportScreenState extends State<ReportScreen> {
     final lastYear = currentYear - 1;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 24),
+      margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: isDark ? AppColors.surfaceDark : Colors.white,
@@ -351,6 +351,7 @@ class _ReportScreenState extends State<ReportScreen> {
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                         color: _currentYearSavings >= 0 ? AppColors.primary : AppColors.danger,
+                        fontFeatures: const [FontFeature.tabularFigures()],
                       ),
                     ),
                   ],
@@ -383,6 +384,7 @@ class _ReportScreenState extends State<ReportScreen> {
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                         color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
+                        fontFeatures: const [FontFeature.tabularFigures()],
                       ),
                     ),
                   ],
@@ -480,7 +482,7 @@ class _ReportScreenState extends State<ReportScreen> {
     }
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 24),
+      margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: isDark ? AppColors.surfaceDark : Colors.white,
@@ -591,6 +593,7 @@ class _ReportScreenState extends State<ReportScreen> {
                             color: isDark ? Colors.white : AppColors.textPrimary,
                             fontWeight: FontWeight.bold,
                             fontSize: 11,
+                            fontFeatures: const [FontFeature.tabularFigures()],
                           ),
                         );
                       }).toList();
@@ -670,17 +673,14 @@ class _ReportScreenState extends State<ReportScreen> {
                     children: [
                       // Sliding Tab Period Selector
                       _buildPeriodSelector(isDark),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 16),
 
                       // Income & Expense Summary Widget
                       _buildSummaryCards(isDark),
-                      const SizedBox(height: 24),
 
                       // Weekly Bar Chart (only relevant if weekly/monthly selected, let's show weekly trend)
-                      if (_selectedPeriod == 'Mingguan') ...[
+                      if (_selectedPeriod == 'Mingguan')
                         _buildBarChartCard(isDark, theme),
-                        const SizedBox(height: 24),
-                      ],
 
                       // Monthly Savings Trend Chart and Comparison (only relevant if Monthly selected)
                       if (_selectedPeriod == 'Bulanan') ...[
@@ -694,7 +694,6 @@ class _ReportScreenState extends State<ReportScreen> {
 
                       // Category breakdown donut chart
                       _buildDonutChartCard(isDark, theme),
-                      const SizedBox(height: 24),
 
                       // Top spending categories list
                       _buildTopCategoriesCard(isDark, theme),
@@ -789,6 +788,7 @@ class _ReportScreenState extends State<ReportScreen> {
     final saving = _totalIncome - _totalExpense;
 
     return Container(
+      margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: isDark ? AppColors.surfaceDark : Colors.white,
@@ -849,6 +849,7 @@ class _ReportScreenState extends State<ReportScreen> {
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                   color: saving >= 0 ? Colors.green : AppColors.danger,
+                  fontFeatures: const [FontFeature.tabularFigures()],
                 ),
               ),
             ],
@@ -883,6 +884,7 @@ class _ReportScreenState extends State<ReportScreen> {
                 style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
+                  fontFeatures: [FontFeature.tabularFigures()],
                 ),
                 overflow: TextOverflow.ellipsis,
               ),
@@ -895,6 +897,7 @@ class _ReportScreenState extends State<ReportScreen> {
 
   Widget _buildBarChartCard(bool isDark, ThemeData theme) {
     return Card(
+      margin: const EdgeInsets.only(bottom: 16),
       child: Padding(
         padding: const EdgeInsets.all(20.0),
         child: Column(
@@ -951,6 +954,7 @@ class _ReportScreenState extends State<ReportScreen> {
 
   Widget _buildDonutChartCard(bool isDark, ThemeData theme) {
     return Card(
+      margin: const EdgeInsets.only(bottom: 16),
       child: Padding(
         padding: const EdgeInsets.all(20.0),
         child: Column(
@@ -1084,6 +1088,7 @@ class _ReportScreenState extends State<ReportScreen> {
       ..sort((a, b) => b.value.compareTo(a.value));
 
     return Card(
+      margin: EdgeInsets.zero,
       child: Padding(
         padding: const EdgeInsets.all(20.0),
         child: Column(
@@ -1170,6 +1175,7 @@ class _ReportScreenState extends State<ReportScreen> {
                               fontWeight: FontWeight.bold,
                               fontSize: 14,
                               color: AppColors.danger,
+                              fontFeatures: [FontFeature.tabularFigures()],
                             ),
                           ),
                         ],
