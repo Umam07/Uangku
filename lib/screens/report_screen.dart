@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -177,6 +176,33 @@ class _ReportScreenState extends State<ReportScreen> {
     return '${amount < 0 ? '-' : ''}Rp $formatted';
   }
 
+  String _formatCompactCurrency(double amount) {
+    final absAmount = amount.abs();
+    if (absAmount >= 1000000000) {
+      return '${amount < 0 ? '-' : ''}Rp ${(absAmount / 1000000000).toStringAsFixed(1)}M';
+    } else if (absAmount >= 1000000) {
+      return '${amount < 0 ? '-' : ''}Rp ${(absAmount / 1000000).toStringAsFixed(1)}jt';
+    } else if (absAmount >= 1000) {
+      return '${amount < 0 ? '-' : ''}Rp ${(absAmount / 1000).toStringAsFixed(0)}rb';
+    }
+    return '${amount < 0 ? '-' : ''}Rp ${absAmount.toStringAsFixed(0)}';
+  }
+
+  String _getCategoryNameByIndex(int index) {
+    if (index < 0 || index >= _categoryExpenses.length) return '';
+    final entry = _categoryExpenses.entries.elementAt(index);
+    final parts = entry.key.split(' ');
+    if (parts.length > 1) {
+      return parts.skip(1).join(' ');
+    }
+    return entry.key;
+  }
+
+  double _getCategoryExpenseByIndex(int index) {
+    if (index < 0 || index >= _categoryExpenses.length) return 0;
+    return _categoryExpenses.values.elementAt(index);
+  }
+
   String _getDayName(int index) {
     final days = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
     final now = DateTime.now();
@@ -213,14 +239,14 @@ class _ReportScreenState extends State<ReportScreen> {
             BarChartRodData(
               toY: dayExpense,
               color: AppColors.expenseRed,
-              width: 8,
-              borderRadius: BorderRadius.circular(3),
+              width: 9,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
             ),
             BarChartRodData(
               toY: dayIncome,
               color: AppColors.incomeGreen,
-              width: 8,
-              borderRadius: BorderRadius.circular(3),
+              width: 9,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
             ),
           ],
         ),
@@ -911,13 +937,27 @@ class _ReportScreenState extends State<ReportScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Tren Mingguan (Expense vs Income)',
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontSize: 15,
-                fontWeight: FontWeight.bold,
-                color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Tren Mingguan',
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
+                  ),
+                ),
+                // Legend
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildLegendItem('Pemasukan', AppColors.incomeGreen),
+                    const SizedBox(width: 12),
+                    _buildLegendItem('Pengeluaran', AppColors.expenseRed),
+                  ],
+                ),
+              ],
             ),
             const SizedBox(height: 24),
             SizedBox(
@@ -925,13 +965,71 @@ class _ReportScreenState extends State<ReportScreen> {
               child: BarChart(
                 BarChartData(
                   barGroups: _getWeeklyBarGroups(),
-                  gridData: FlGridData(show: false),
+                  gridData: FlGridData(
+                    show: true,
+                    drawVerticalLine: false,
+                    drawHorizontalLine: true,
+                    getDrawingHorizontalLine: (value) {
+                      return FlLine(
+                        color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
+                        strokeWidth: 0.8,
+                        dashArray: [4, 4],
+                      );
+                    },
+                  ),
                   borderData: FlBorderData(show: false),
+                  barTouchData: BarTouchData(
+                    enabled: true,
+                    touchTooltipData: BarTouchTooltipData(
+                      tooltipBgColor: isDark 
+                          ? AppColors.surfaceDark.withValues(alpha: 0.95) 
+                          : Colors.white.withValues(alpha: 0.95),
+                      tooltipBorder: BorderSide(
+                        color: AppColors.primary.withValues(alpha: 0.3),
+                        width: 1,
+                      ),
+                      tooltipRoundedRadius: 8,
+                      getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                        final isIncome = rodIndex == 1;
+                        final typeStr = isIncome ? 'Pemasukan' : 'Pengeluaran';
+                        final amountStr = _formatCurrency(rod.toY);
+                        return BarTooltipItem(
+                          '$typeStr\n$amountStr',
+                          TextStyle(
+                            color: isIncome ? AppColors.incomeGreen : AppColors.expenseRed,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 11,
+                            fontFeatures: const [FontFeature.tabularFigures()],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
                   titlesData: FlTitlesData(
                     show: true,
-                    topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    leftTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 42,
+                        getTitlesWidget: (value, meta) {
+                          if (value == 0) return const SizedBox();
+                          return SideTitleWidget(
+                            axisSide: meta.axisSide,
+                            space: 4,
+                            child: Text(
+                              _formatCompactCurrency(value),
+                              style: const TextStyle(
+                                fontSize: 9,
+                                fontWeight: FontWeight.w500,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
                     bottomTitles: AxisTitles(
                       sideTitles: SideTitles(
                         showTitles: true,
@@ -957,6 +1055,31 @@ class _ReportScreenState extends State<ReportScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildLegendItem(String label, Color color) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 5),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 10.5,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textSecondary,
+          ),
+        ),
+      ],
     );
   }
 
@@ -996,30 +1119,69 @@ class _ReportScreenState extends State<ReportScreen> {
                   )
                 : Row(
                     children: [
-                      SizedBox(
-                        width: 120,
-                        height: 120,
-                        child: PieChart(
-                          PieChartData(
-                            pieTouchData: PieTouchData(
-                              touchCallback: (FlTouchEvent event, pieTouchResponse) {
-                                setState(() {
-                                  if (!event.isInterestedForInteractions ||
-                                      pieTouchResponse == null ||
-                                      pieTouchResponse.touchedSection == null) {
-                                    _touchedPieIndex = -1;
-                                    return;
-                                  }
-                                  _touchedPieIndex = pieTouchResponse.touchedSection!.touchedSectionIndex;
-                                });
-                              },
+                      // Donut Chart with dynamic center text
+                      Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          SizedBox(
+                            width: 130,
+                            height: 130,
+                            child: PieChart(
+                              PieChartData(
+                                pieTouchData: PieTouchData(
+                                  touchCallback: (FlTouchEvent event, pieTouchResponse) {
+                                    setState(() {
+                                      if (!event.isInterestedForInteractions ||
+                                          pieTouchResponse == null ||
+                                          pieTouchResponse.touchedSection == null) {
+                                        _touchedPieIndex = -1;
+                                        return;
+                                      }
+                                      _touchedPieIndex = pieTouchResponse.touchedSection!.touchedSectionIndex;
+                                    });
+                                  },
+                                ),
+                                borderData: FlBorderData(show: false),
+                                sectionsSpace: 3,
+                                centerSpaceRadius: 42,
+                                sections: _getPieSections(),
+                              ),
                             ),
-                            borderData: FlBorderData(show: false),
-                            sectionsSpace: 4,
-                            centerSpaceRadius: 38,
-                            sections: _getPieSections(),
                           ),
-                        ),
+                          // Center Info Text Overlay
+                          IgnorePointer(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  _touchedPieIndex == -1 
+                                      ? 'Total' 
+                                      : _getCategoryNameByIndex(_touchedPieIndex),
+                                  style: TextStyle(
+                                    fontSize: _touchedPieIndex == -1 ? 10 : 9,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  _touchedPieIndex == -1 
+                                      ? _formatCompactCurrency(_totalExpense)
+                                      : _formatCompactCurrency(_getCategoryExpenseByIndex(_touchedPieIndex)),
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(width: 16),
                       Expanded(child: _buildPieLegend(isDark)),
@@ -1036,18 +1198,18 @@ class _ReportScreenState extends State<ReportScreen> {
     return _categoryExpenses.entries.map((entry) {
       final isTouched = idx == _touchedPieIndex;
       idx++;
-      final double radius = isTouched ? 24.0 : 16.0;
-      final percentage = (entry.value / _totalExpense) * 100;
+      final double radius = isTouched ? 22.0 : 16.0;
 
       return PieChartSectionData(
         color: _getCategoryColor(entry.key),
         value: entry.value,
-        title: isTouched ? '${percentage.toStringAsFixed(0)}%' : '',
+        title: '', // Keep slices clean, details display in center & legend
         radius: radius,
-        titleStyle: const TextStyle(
-          fontWeight: FontWeight.bold,
-          color: Colors.white,
-          fontSize: 10,
+        borderSide: BorderSide(
+          color: isTouched 
+              ? AppColors.primary.withValues(alpha: 0.5) 
+              : Colors.transparent,
+          width: isTouched ? 2 : 0,
         ),
       );
     }).toList();
@@ -1060,28 +1222,57 @@ class _ReportScreenState extends State<ReportScreen> {
       children: _categoryExpenses.entries.map((entry) {
         final percentage = (entry.value / _totalExpense) * 100;
         final color = _getCategoryColor(entry.key);
+        
+        final emoji = entry.key.split(' ').first;
+        final catName = entry.key.split(' ').skip(1).join(' ');
+
         return Padding(
-          padding: const EdgeInsets.only(bottom: 6.0),
+          padding: const EdgeInsets.symmetric(vertical: 4.0),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Container(
-                width: 8,
-                height: 8,
+                width: 6,
+                height: 6,
                 decoration: BoxDecoration(
                   color: color,
-                  borderRadius: BorderRadius.circular(2.5),
+                  shape: BoxShape.circle,
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 6),
+              Text(
+                emoji,
+                style: const TextStyle(fontSize: 12),
+              ),
+              const SizedBox(width: 4),
               Expanded(
-                child: Text(
-                  '${entry.key} (${percentage.toStringAsFixed(0)}%)',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
-                  ),
-                  overflow: TextOverflow.ellipsis,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      catName,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 1),
+                    Text(
+                      '${_formatCurrency(entry.value)} (${percentage.toStringAsFixed(0)}%)',
+                      style: TextStyle(
+                        fontSize: 9.5,
+                        color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondary,
+                        fontWeight: FontWeight.w500,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ),
               ),
             ],
