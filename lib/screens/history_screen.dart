@@ -1,7 +1,7 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../services/transaction_service.dart';
+import 'widgets/custom_toast.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -247,8 +247,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   Future<void> _deleteTransaction(Transaction tx) async {
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
-
     // Perform Delete
     await _transactionService.deleteTransaction(tx.id);
 
@@ -257,22 +255,18 @@ class _HistoryScreenState extends State<HistoryScreen> {
       _applyFilters();
     });
 
-    scaffoldMessenger.clearSnackBars();
-    scaffoldMessenger.showSnackBar(
-      SnackBar(
-        content: Text('"${tx.title}" dihapus'),
-        behavior: SnackBarBehavior.floating,
-        action: SnackBarAction(
-          label: 'Batal',
-          textColor: AppColors.primary,
-          onPressed: () async {
-            // Restore transaction
-            await _transactionService.addTransaction(tx);
-            // Re-load list (to place it correctly)
-            _loadTransactions();
-          },
-        ),
-      ),
+    if (!mounted) return;
+
+    CustomToast.showSuccess(
+      context,
+      '"${tx.title}" dihapus',
+      actionLabel: 'Batal',
+      onActionPressed: () async {
+        // Restore transaction
+        await _transactionService.addTransaction(tx);
+        // Re-load list (to place it correctly)
+        _loadTransactions();
+      },
     );
   }
 

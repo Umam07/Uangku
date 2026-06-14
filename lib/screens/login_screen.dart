@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../services/auth_service.dart';
 import 'dashboard_screen.dart';
+import 'widgets/custom_toast.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -71,11 +72,9 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Gagal masuk dengan Google: $e'),
-            backgroundColor: AppColors.danger,
-          ),
+        CustomToast.showError(
+          context,
+          'Gagal masuk dengan Google: $e',
         );
       }
     } finally {
@@ -108,11 +107,9 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Gagal masuk: $e'),
-            backgroundColor: AppColors.danger,
-          ),
+        CustomToast.showError(
+          context,
+          'Gagal masuk: $e',
         );
       }
     } finally {

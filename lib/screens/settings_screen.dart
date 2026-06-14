@@ -4,6 +4,7 @@ import '../theme/app_colors.dart';
 import '../services/auth_service.dart';
 import '../services/transaction_service.dart';
 import 'login_screen.dart';
+import 'widgets/custom_toast.dart';
 
 // Global ValueNotifier to control ThemeMode from Settings
 final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.system);
@@ -72,18 +73,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _notificationsEnabled = value;
     });
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            value
-                ? 'Notifikasi harian diaktifkan.'
-                : 'Notifikasi harian dinonaktifkan.',
-            style: const TextStyle(fontWeight: FontWeight.w600),
-          ),
-          backgroundColor: AppColors.primary,
-          behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 2),
-        ),
+      CustomToast.showSuccess(
+        context,
+        value
+            ? 'Notifikasi harian diaktifkan.'
+            : 'Notifikasi harian dinonaktifkan.',
+        duration: const Duration(seconds: 2),
       );
     }
   }
@@ -169,15 +164,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               await _transactionService.getTransactions();
 
               if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text(
-                      'Data transaksi berhasil direset!',
-                      style: TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                    backgroundColor: AppColors.primary,
-                    behavior: SnackBarBehavior.floating,
-                  ),
+                CustomToast.showSuccess(
+                  context,
+                  'Data transaksi berhasil direset!',
                 );
               }
             },
@@ -553,12 +542,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       onPressed: () async {
                         final newName = nameController.text.trim();
                         if (newName.isEmpty) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Nama tidak boleh kosong!'),
-                              backgroundColor: AppColors.danger,
-                              behavior: SnackBarBehavior.floating,
-                            ),
+                          CustomToast.showError(
+                            context,
+                            'Nama tidak boleh kosong!',
                           );
                           return;
                         }
@@ -576,12 +562,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         await _loadSettingsData();
 
                         if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Profil berhasil diperbarui!'),
-                              backgroundColor: AppColors.primary,
-                              behavior: SnackBarBehavior.floating,
-                            ),
+                          CustomToast.showSuccess(
+                            context,
+                            'Profil berhasil diperbarui!',
                           );
                         }
                       },
@@ -1713,14 +1696,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 isDark: isDark,
                 onTap: () {
                   Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Menghubungi customer support via WhatsApp...',
-                      ),
-                      backgroundColor: Colors.green,
-                      behavior: SnackBarBehavior.floating,
-                    ),
+                  CustomToast.showSuccess(
+                    context,
+                    'Menghubungi customer support via WhatsApp...',
                   );
                 },
               ),
@@ -1735,12 +1713,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 isDark: isDark,
                 onTap: () {
                   Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Membuka aplikasi email...'),
-                      backgroundColor: Colors.blue,
-                      behavior: SnackBarBehavior.floating,
-                    ),
+                  CustomToast.showSuccess(
+                    context,
+                    'Membuka aplikasi email...',
                   );
                 },
               ),

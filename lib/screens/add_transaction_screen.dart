@@ -1,9 +1,9 @@
 import 'dart:async';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../theme/app_colors.dart';
 import '../services/transaction_service.dart';
+import 'widgets/custom_toast.dart';
 
 class AddTransactionScreen extends StatefulWidget {
   final VoidCallback onTransactionSaved;
@@ -125,8 +125,9 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
     final amount = double.tryParse(cleanAmount) ?? 0.0;
     
     if (amount <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Nominal harus lebih dari 0')),
+      CustomToast.showWarning(
+        context,
+        'Nominal harus lebih dari 0',
       );
       return;
     }
@@ -144,12 +145,9 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
     HapticFeedback.lightImpact();
     
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Transaksi "${newTx.title}" disimpan!'),
-          backgroundColor: AppColors.primary,
-          behavior: SnackBarBehavior.floating,
-        ),
+      CustomToast.showSuccess(
+        context,
+        'Transaksi "${newTx.title}" disimpan!',
       );
       
       // Reset Form
@@ -190,12 +188,9 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
         _selectedCategory = '🛒 Belanja';
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('📸 OCR Struk Belanja Berhasil! Data diisi otomatis.'),
-          backgroundColor: AppColors.primary,
-          behavior: SnackBarBehavior.floating,
-        ),
+      CustomToast.showSuccess(
+        context,
+        '📸 OCR Struk Belanja Berhasil! Data diisi otomatis.',
       );
     });
   }
@@ -662,7 +657,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: const [
                               Icon(Icons.receipt_rounded, color: Colors.white38, size: 72),
-                              const SizedBox(height: 12),
+                              SizedBox(height: 12),
                               Text(
                                 'Arahkan struk belanja\nke dalam bingkai',
                                 textAlign: TextAlign.center,
