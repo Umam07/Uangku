@@ -340,16 +340,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
     final groupedMap = _groupTransactionsByDate(_filteredTransactions);
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'Riwayat Keuangan',
-          style: TextStyle(
-            color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        automaticallyImplyLeading: false,
-      ),
       body: SafeArea(
         child: Column(
           children: [

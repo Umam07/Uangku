@@ -606,16 +606,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final photo = _userData?['photo'] ?? '';
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'Pengaturan',
-          style: TextStyle(
-            color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        automaticallyImplyLeading: false,
-      ),
       body: Stack(
         children: [
           // Top Decorative Gradient Glow

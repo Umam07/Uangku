@@ -674,16 +674,6 @@ class _ReportScreenState extends State<ReportScreen> {
     final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'Laporan Keuangan',
-          style: TextStyle(
-            color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        automaticallyImplyLeading: false,
-      ),
       body: SafeArea(
         child: _isLoading
             ? const Center(
