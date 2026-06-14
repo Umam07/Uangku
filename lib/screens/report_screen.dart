@@ -709,14 +709,11 @@ class _ReportScreenState extends State<ReportScreen> {
     final periods = ['Harian', 'Mingguan', 'Bulanan'];
     return Container(
       width: double.infinity,
-      height: 48,
+      height: 46,
       padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.surfaceDark : Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.05),
-        ),
+        color: isDark ? const Color(0xFF1C1C1E) : const Color(0xFFEFEFF0),
+        borderRadius: BorderRadius.circular(14),
       ),
       child: Row(
         children: periods.map((period) {
@@ -732,14 +729,16 @@ class _ReportScreenState extends State<ReportScreen> {
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(13),
-                  color: isSelected ? AppColors.primary : Colors.transparent,
+                  borderRadius: BorderRadius.circular(11),
+                  color: isSelected 
+                      ? (isDark ? Colors.white.withValues(alpha: 0.12) : Colors.white) 
+                      : Colors.transparent,
                   boxShadow: isSelected
                       ? [
                           BoxShadow(
-                            color: AppColors.primary.withValues(alpha: 0.2),
-                            blurRadius: 6,
-                            offset: const Offset(0, 2),
+                            color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.06),
+                            blurRadius: 4,
+                            offset: const Offset(0, 1.5),
                           )
                         ]
                       : null,
@@ -749,10 +748,10 @@ class _ReportScreenState extends State<ReportScreen> {
                   period,
                   style: TextStyle(
                     fontSize: 13,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                     color: isSelected
-                        ? Colors.white
-                        : (isDark ? AppColors.textSecondaryDark : AppColors.textSecondary),
+                        ? (isDark ? Colors.white : const Color(0xFF1C1C1E))
+                        : const Color(0xFF8E8E93),
                   ),
                 ),
               ),
