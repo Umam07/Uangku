@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_spacing.dart';
 import '../services/auth_service.dart';
 import '../services/transaction_service.dart';
+import 'widgets/app_header.dart';
 
+/// HomeTab is the dashboard landing page of the Uangku app.
+/// Completely polished under iOS HIG guidelines while preserving brand identity.
 class HomeTab extends StatefulWidget {
   final VoidCallback onNavigateToHistory;
   
@@ -79,6 +83,7 @@ class _HomeTabState extends State<HomeTab> {
     return Colors.cyan;
   }
 
+  /// Formats double amount to standard absolute currency string "Rp 150.000"
   String _formatCurrency(double amount) {
     final absAmount = amount.abs();
     final value = absAmount.toStringAsFixed(0);
@@ -92,7 +97,7 @@ class _HomeTabState extends State<HomeTab> {
       }
     }
     final formatted = buffer.toString().split('').reversed.join('');
-    return '${amount < 0 ? '-' : ''}Rp $formatted';
+    return 'Rp $formatted';
   }
 
   @override
@@ -114,74 +119,88 @@ class _HomeTabState extends State<HomeTab> {
     final recentTransactions = _transactions.take(5).toList();
 
     return Scaffold(
-      appBar: AppBar(
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('💸 ', style: TextStyle(fontSize: 22)),
-            Text(
-              'Uangku',
-              style: TextStyle(
-                color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-        automaticallyImplyLeading: false,
-      ),
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: _loadData,
           color: AppColors.primary,
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 100.0), // Space for floating navbar
+            // Outer scroll padding top & bottom to prevent cut-off by notched bottom navbar
+            padding: const EdgeInsets.only(top: AppSpacing.s, bottom: 100.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // User Welcome Header
-                _buildHeader(isDark, theme),
-                const SizedBox(height: 20),
+                // Top Bar Header
+                AppHeader(
+                  name: _userData?['name'] ?? "Muhammad Syafi'ul Umam",
+                  photoUrl: _userData?['photo'] ?? '',
+                  rightActionIcon: _obscureBalance 
+                      ? Icons.visibility_off_outlined 
+                      : Icons.visibility_outlined,
+                  onRightActionPressed: () {
+                    setState(() {
+                      _obscureBalance = !_obscureBalance;
+                    });
+                  },
+                  isDark: isDark,
+                ),
+                const SizedBox(height: AppSpacing.l),
 
                 // Balance Card
-                _buildBalanceCard(isDark, theme),
-                const SizedBox(height: 24),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.l),
+                  child: _buildBalanceCard(isDark, theme),
+                ),
+                const SizedBox(height: AppSpacing.l),
 
                 // Donut Chart Composition
-                _buildChartCard(isDark, theme),
-                const SizedBox(height: 24),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.l),
+                  child: _buildChartCard(isDark, theme),
+                ),
+                const SizedBox(height: AppSpacing.l),
 
-                // Recent Transactions Header
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Transaksi Terbaru',
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
-                      ),
-                    ),
-                    if (_transactions.isNotEmpty)
-                      TextButton(
-                        onPressed: widget.onNavigateToHistory,
-                        child: const Text(
-                          'Lihat Semua',
-                          style: TextStyle(
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                          ),
+                // Recent Transactions Section Header
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.l),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Transaksi Terbaru',
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
                         ),
                       ),
-                  ],
+                      if (_transactions.isNotEmpty)
+                        TextButton(
+                          onPressed: widget.onNavigateToHistory,
+                          style: TextButton.styleFrom(
+                            padding: EdgeInsets.zero,
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          child: const Text(
+                            'Lihat Semua',
+                            style: TextStyle(
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: AppSpacing.s),
 
                 // Transactions List
-                _buildTransactionsList(recentTransactions, isDark, theme),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.l),
+                  child: _buildTransactionsList(recentTransactions, isDark, theme),
+                ),
               ],
             ),
           ),
@@ -190,62 +209,7 @@ class _HomeTabState extends State<HomeTab> {
     );
   }
 
-  Widget _buildHeader(bool isDark, ThemeData theme) {
-    final name = _userData?['name'] ?? 'Pengguna Uangku';
-    final photo = _userData?['photo'] ?? '';
-
-    return Row(
-      children: [
-        CircleAvatar(
-          radius: 26,
-          backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-          backgroundImage: photo.isNotEmpty && photo.startsWith('http') ? NetworkImage(photo) : null,
-          child: photo.isEmpty || !photo.startsWith('http')
-              ? Text(
-                  name.isNotEmpty ? name[0].toUpperCase() : 'U',
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.primary,
-                  ),
-                )
-              : null,
-        ),
-        const SizedBox(width: 14),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Halo,',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondary,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              Text(
-                name,
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildBalanceCard(bool isDark, ThemeData theme) {
-    final balanceText = _obscureBalance ? 'Rp ••••••' : _formatCurrency(_totalBalance);
-    final incomeText = _obscureBalance ? 'Rp ••••••' : _formatCurrency(_totalIncome);
-    final expenseText = _obscureBalance ? 'Rp ••••••' : _formatCurrency(_totalExpense);
-
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
@@ -254,12 +218,12 @@ class _HomeTabState extends State<HomeTab> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusCard), // 16
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.3),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
+            color: Colors.black.withValues(alpha: 0.06), // shadow y:2, blur:8, rgba(0,0,0,0.06)
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
         ],
         border: Border.all(
@@ -268,7 +232,7 @@ class _HomeTabState extends State<HomeTab> {
         ),
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusCard - 1.5),
         child: Stack(
           children: [
             // Abstract decorative circles for premium design
@@ -296,65 +260,37 @@ class _HomeTabState extends State<HomeTab> {
                 ),
               ),
             ),
+            
             // Card Content
             Padding(
-              padding: const EdgeInsets.all(20.0),
+              padding: const EdgeInsets.all(AppSpacing.l), // padding 16
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.account_balance_wallet_rounded,
-                            color: Colors.white70,
-                            size: 16,
-                          ),
-                          const SizedBox(width: 6),
-                          const Text(
-                            'Total Saldo',
-                            style: TextStyle(
-                              color: Colors.white70,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 0.2,
-                            ),
-                          ),
-                        ],
+                    children: const [
+                      Icon(
+                        Icons.account_balance_wallet_rounded,
+                        color: Colors.white70,
+                        size: 16,
                       ),
-                      // Privacy Toggle Button
-                      Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(20),
-                          onTap: () {
-                            setState(() {
-                              _obscureBalance = !_obscureBalance;
-                            });
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.all(6),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.15),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              _obscureBalance
-                                  ? Icons.visibility_off_rounded
-                                  : Icons.visibility_rounded,
-                              color: Colors.white,
-                              size: 16,
-                            ),
-                          ),
+                      SizedBox(width: 6),
+                      Text(
+                        'Total Saldo',
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.2,
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    balanceText,
+                    _obscureBalance 
+                        ? 'Rp ••••••' 
+                        : '${_totalBalance < 0 ? '-' : ''}${_formatCurrency(_totalBalance)}',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 34,
@@ -372,7 +308,7 @@ class _HomeTabState extends State<HomeTab> {
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                           decoration: BoxDecoration(
                             color: Colors.white.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(16),
+                            borderRadius: BorderRadius.circular(AppSpacing.radiusButton), // 12
                             border: Border.all(
                               color: Colors.white.withValues(alpha: 0.1),
                               width: 1,
@@ -399,7 +335,7 @@ class _HomeTabState extends State<HomeTab> {
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
-                                      incomeText,
+                                      _obscureBalance ? 'Rp ••••••' : '+ ${_formatCurrency(_totalIncome)}',
                                       style: const TextStyle(
                                         color: Colors.white,
                                         fontSize: 12,
@@ -416,13 +352,14 @@ class _HomeTabState extends State<HomeTab> {
                         ),
                       ),
                       const SizedBox(width: 12),
+                      
                       // Expense card
                       Expanded(
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                           decoration: BoxDecoration(
                             color: Colors.white.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(16),
+                            borderRadius: BorderRadius.circular(AppSpacing.radiusButton), // 12
                             border: Border.all(
                               color: Colors.white.withValues(alpha: 0.1),
                               width: 1,
@@ -449,7 +386,7 @@ class _HomeTabState extends State<HomeTab> {
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
-                                      expenseText,
+                                      _obscureBalance ? 'Rp ••••••' : '- ${_formatCurrency(_totalExpense)}',
                                       style: const TextStyle(
                                         color: Colors.white,
                                         fontSize: 12,
@@ -477,58 +414,69 @@ class _HomeTabState extends State<HomeTab> {
   }
 
   Widget _buildChartCard(bool isDark, ThemeData theme) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Komposisi Pengeluaran',
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
-              ),
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.surfaceDark : AppColors.surface,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusCard), // 16
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06), // shadow y:2, blur:8, rgba(0,0,0,0.06)
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(AppSpacing.l), // padding 16
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Komposisi Pengeluaran',
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
             ),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                // Interactive Donut Chart
-                SizedBox(
-                  width: 130,
-                  height: 130,
-                  child: PieChart(
-                    PieChartData(
-                      pieTouchData: PieTouchData(
-                        touchCallback: (FlTouchEvent event, pieTouchResponse) {
-                          setState(() {
-                            if (!event.isInterestedForInteractions ||
-                                pieTouchResponse == null ||
-                                pieTouchResponse.touchedSection == null) {
-                                _touchedIndex = -1;
-                              return;
-                            }
-                            _touchedIndex = pieTouchResponse.touchedSection!.touchedSectionIndex;
-                          });
-                        },
-                      ),
-                      borderData: FlBorderData(show: false),
-                      sectionsSpace: 4,
-                      centerSpaceRadius: 40,
-                      sections: _showingSections(),
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              // Interactive Donut Chart
+              SizedBox(
+                width: 130,
+                height: 130,
+                child: PieChart(
+                  PieChartData(
+                    pieTouchData: PieTouchData(
+                      touchCallback: (FlTouchEvent event, pieTouchResponse) {
+                        setState(() {
+                          if (!event.isInterestedForInteractions ||
+                              pieTouchResponse == null ||
+                              pieTouchResponse.touchedSection == null) {
+                            _touchedIndex = -1;
+                            return;
+                          }
+                          _touchedIndex = pieTouchResponse.touchedSection!.touchedSectionIndex;
+                        });
+                      },
                     ),
+                    borderData: FlBorderData(show: false),
+                    sectionsSpace: 4,
+                    centerSpaceRadius: 40,
+                    sections: _showingSections(),
                   ),
                 ),
-                const SizedBox(width: 20),
-                // Dynamic Legend
-                Expanded(
-                  child: _buildDynamicLegend(isDark),
-                ),
-              ],
-            ),
-          ],
-        ),
+              ),
+              const SizedBox(width: 20),
+              
+              // Dynamic Legend
+              Expanded(
+                child: _buildDynamicLegend(isDark),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -648,20 +596,30 @@ class _HomeTabState extends State<HomeTab> {
 
   Widget _buildTransactionsList(List<Transaction> recentList, bool isDark, ThemeData theme) {
     if (recentList.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 40.0),
-          child: Column(
-            children: const [
-              Text('🪙', style: TextStyle(fontSize: 48)),
-              SizedBox(height: 12),
-              Text(
-                'Belum ada transaksi.\nTambahkan transaksi pertama Anda!',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: AppColors.textSecondary),
-              ),
-            ],
-          ),
+      return Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.surfaceDark : AppColors.surface,
+          borderRadius: BorderRadius.circular(AppSpacing.radiusCard), // 16
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06), // shadow y:2, blur:8, rgba(0,0,0,0.06)
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        padding: const EdgeInsets.symmetric(vertical: 40.0, horizontal: 16.0),
+        child: Column(
+          children: const [
+            Text('🪙', style: TextStyle(fontSize: 48)),
+            SizedBox(height: 12),
+            Text(
+              'Belum ada transaksi.\nTambahkan transaksi pertama Anda!',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
+          ],
         ),
       );
     }
@@ -680,15 +638,15 @@ class _HomeTabState extends State<HomeTab> {
         final catName = tx.category.split(' ').skip(1).join(' ');
 
         return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding: const EdgeInsets.all(AppSpacing.l), // padding 16
           decoration: BoxDecoration(
             color: isDark ? AppColors.surfaceDark : AppColors.surface,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(AppSpacing.radiusCard), // radius 16
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.05 : 0.02),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
+                color: Colors.black.withValues(alpha: 0.06), // shadow y:2, blur:8, rgba(0,0,0,0.06)
+                blurRadius: 8,
+                offset: const Offset(0, 2),
               ),
             ],
           ),
@@ -736,9 +694,9 @@ class _HomeTabState extends State<HomeTab> {
                   ],
                 ),
               ),
-              // Nominal with tabular figures
+              // Nominal with tabular figures and Apple system colors
               Text(
-                '${isIncome ? '+' : '-'}${_formatCurrency(tx.amount).replaceFirst('Rp ', '')}',
+                '${isIncome ? '+' : '-'} ${_formatCurrency(tx.amount)}',
                 style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.bold,
