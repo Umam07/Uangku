@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../theme/app_colors.dart';
 import '../services/transaction_service.dart';
@@ -707,57 +708,79 @@ class _ReportScreenState extends State<ReportScreen> {
 
   Widget _buildPeriodSelector(bool isDark) {
     final periods = ['Harian', 'Mingguan', 'Bulanan'];
+    final selectedIndex = periods.indexOf(_selectedPeriod);
+    final double alignX = -1.0 + (selectedIndex * 1.0);
+
     return Container(
       width: double.infinity,
       height: 46,
-      padding: const EdgeInsets.all(3),
+      padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1C1C1E) : const Color(0xFFEFEFF0),
         borderRadius: BorderRadius.circular(14),
       ),
-      child: Row(
-        children: periods.map((period) {
-          final isSelected = _selectedPeriod == period;
-          return Expanded(
-            child: GestureDetector(
-              onTap: () {
-                setState(() {
-                  _selectedPeriod = period;
-                });
-                _loadReportData();
-              },
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
+      child: Stack(
+        children: [
+          // Sliding Active Pill
+          AnimatedAlign(
+            alignment: Alignment(alignX, 0.0),
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeInOut,
+            child: FractionallySizedBox(
+              widthFactor: 1 / 3,
+              child: Container(
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(11),
-                  color: isSelected 
-                      ? (isDark ? Colors.white.withValues(alpha: 0.12) : Colors.white) 
-                      : Colors.transparent,
-                  boxShadow: isSelected
-                      ? [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.06),
-                            blurRadius: 4,
-                            offset: const Offset(0, 1.5),
-                          )
-                        ]
-                      : null,
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  period,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                    color: isSelected
-                        ? (isDark ? Colors.white : const Color(0xFF1C1C1E))
-                        : const Color(0xFF8E8E93),
-                  ),
+                  color: isDark ? Colors.white.withValues(alpha: 0.12) : Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.06),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1.5),
+                    )
+                  ],
                 ),
               ),
             ),
-          );
-        }).toList(),
+          ),
+          // Interactive Segment Text Row
+          Row(
+            children: List.generate(periods.length, (index) {
+              final period = periods[index];
+              final isSelected = selectedIndex == index;
+
+              return Expanded(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {
+                    if (!isSelected) {
+                      HapticFeedback.lightImpact();
+                      setState(() {
+                        _selectedPeriod = period;
+                      });
+                      _loadReportData();
+                    }
+                  },
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      child: Text(
+                        period,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                          color: isSelected
+                              ? (isDark ? Colors.white : const Color(0xFF1C1C1E))
+                              : const Color(0xFF8E8E93),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }),
+          ),
+        ],
       ),
     );
   }
