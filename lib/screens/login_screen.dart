@@ -353,13 +353,16 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                         painter: _GoogleIconPainter(),
                       ),
                       const SizedBox(width: 12),
-                      const Text(
-                        'Masuk dengan Google',
-                        style: TextStyle(
-                          color: Color(0xFF1F2937),
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          fontFamily: 'Poppins',
+                      const Flexible(
+                        child: Text(
+                          'Masuk dengan Google',
+                          style: TextStyle(
+                            color: Color(0xFF1F2937),
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            fontFamily: 'Poppins',
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
@@ -407,12 +410,15 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                   ),
                 ),
                 const SizedBox(width: 8),
-                Text(
-                  'Masuk sebagai Tamu (Demo)',
-                  style: theme.textTheme.bodyLarge?.copyWith(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
+                Flexible(
+                  child: Text(
+                    'Masuk sebagai Tamu',
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
@@ -429,13 +435,16 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
           children: [
             Container(width: 40, height: 1, color: textColor.withValues(alpha: 0.2)),
             const SizedBox(width: 12),
-            Text(
-              'Fitur Utama Uangku',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: textColor.withValues(alpha: 0.7),
-                letterSpacing: 1,
+            Flexible(
+              child: Text(
+                'Fitur Utama Uangku',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: textColor.withValues(alpha: 0.7),
+                  letterSpacing: 1,
+                ),
+                overflow: TextOverflow.ellipsis,
               ),
             ),
             const SizedBox(width: 12),
