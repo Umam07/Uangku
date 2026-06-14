@@ -5,7 +5,6 @@ import 'add_transaction_screen.dart';
 import 'report_screen.dart';
 import 'settings_screen.dart';
 import 'widgets/app_bottom_nav_bar.dart';
-import '../theme/app_colors.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -83,31 +82,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         currentIndex: _currentIndex,
         onTap: _onTabTapped,
       ),
-      floatingActionButton: Container(
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.12),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: FloatingActionButton(
-          onPressed: () => _onTabTapped(2),
-          elevation: 0, // Disable default elevation to use custom shadow
-          shape: const CircleBorder(), // FAB penuh
-          backgroundColor: AppColors.primary,
-          child: const Icon(
-            Icons.add_rounded,
-            color: Colors.white,
-            size: 28,
-          ),
-        ),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
     );
   }
 }
-
