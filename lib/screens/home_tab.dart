@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
 import '../services/auth_service.dart';
 import '../services/transaction_service.dart';
 import 'widgets/app_header.dart';
+import 'widgets/custom_toast.dart';
 
 /// HomeTab is the dashboard landing page of the Uangku app.
 /// Completely polished under iOS HIG guidelines while preserving brand identity.
@@ -120,6 +122,7 @@ class _HomeTabState extends State<HomeTab> {
 
     return Scaffold(
       body: SafeArea(
+        bottom: false,
         child: RefreshIndicator(
           onRefresh: _loadData,
           color: AppColors.primary,
@@ -134,13 +137,10 @@ class _HomeTabState extends State<HomeTab> {
                 AppHeader(
                   name: _userData?['name'] ?? "Muhammad Syafi'ul Umam",
                   photoUrl: _userData?['photo'] ?? '',
-                  rightActionIcon: _obscureBalance 
-                      ? Icons.visibility_off_outlined 
-                      : Icons.visibility_outlined,
+                  rightActionIcon: Icons.notifications_none_rounded,
                   onRightActionPressed: () {
-                    setState(() {
-                      _obscureBalance = !_obscureBalance;
-                    });
+                    HapticFeedback.lightImpact();
+                    CustomToast.showInfo(context, 'Belum ada notifikasi baru');
                   },
                   isDark: isDark,
                 ),
@@ -268,20 +268,44 @@ class _HomeTabState extends State<HomeTab> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
-                    children: const [
-                      Icon(
-                        Icons.account_balance_wallet_rounded,
-                        color: Colors.white70,
-                        size: 16,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: const [
+                          Icon(
+                            Icons.account_balance_wallet_rounded,
+                            color: Colors.white70,
+                            size: 16,
+                          ),
+                          SizedBox(width: 6),
+                          Text(
+                            'Total Saldo',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.2,
+                            ),
+                          ),
+                        ],
                       ),
-                      SizedBox(width: 6),
-                      Text(
-                        'Total Saldo',
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 0.2,
+                      GestureDetector(
+                        onTap: () {
+                          HapticFeedback.lightImpact();
+                          setState(() {
+                            _obscureBalance = !_obscureBalance;
+                          });
+                        },
+                        behavior: HitTestBehavior.opaque,
+                        child: Padding(
+                          padding: const EdgeInsets.all(4.0),
+                          child: Icon(
+                            _obscureBalance 
+                                ? Icons.visibility_off_outlined 
+                                : Icons.visibility_outlined,
+                            color: Colors.white70,
+                            size: 20,
+                          ),
                         ),
                       ),
                     ],

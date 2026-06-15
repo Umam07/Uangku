@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'theme/app_theme.dart';
 import 'services/auth_service.dart';
@@ -9,6 +10,13 @@ import 'screens/settings_screen.dart'; // import global themeNotifier
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Make system bars completely transparent
+  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    systemNavigationBarColor: Colors.transparent,
+    systemNavigationBarDividerColor: Colors.transparent,
+  ));
   
   // Load saved theme preference on start
   final prefs = await SharedPreferences.getInstance();

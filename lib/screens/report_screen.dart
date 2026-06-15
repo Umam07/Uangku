@@ -675,6 +675,7 @@ class _ReportScreenState extends State<ReportScreen> {
 
     return Scaffold(
       body: SafeArea(
+        bottom: false,
         child: _isLoading
             ? const Center(
                 child: CircularProgressIndicator(

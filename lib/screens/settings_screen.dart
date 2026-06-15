@@ -627,6 +627,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
           SafeArea(
+            bottom: false,
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(
                 16,

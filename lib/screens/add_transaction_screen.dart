@@ -120,7 +120,12 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
   Future<void> _saveTransaction() async {
     if (!_formKey.currentState!.validate()) return;
     
-    final title = _titleController.text.trim();
+    String title = _titleController.text.trim();
+    if (title.isEmpty) {
+      // Extract the name part of the category (e.g. from "🍔 Makanan" to "Makanan")
+      final parts = _selectedCategory.split(' ');
+      title = parts.length > 1 ? parts.skip(1).join(' ') : _selectedCategory;
+    }
     final cleanAmount = _amountController.text.replaceAll('.', '');
     final amount = double.tryParse(cleanAmount) ?? 0.0;
     
@@ -200,6 +205,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final categories = _isIncome ? _incomeCategories : _expenseCategories;
+    final activeColor = _isIncome ? AppColors.incomeGreen : AppColors.expenseRed;
 
     return Container(
       decoration: BoxDecoration(
@@ -268,23 +274,50 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
 
                         // Title Input
                         Text(
-                          'Nama Transaksi',
+                          'Nama Transaksi (Opsional)',
                           style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 8),
                         TextFormField(
                           controller: _titleController,
-                          style: const TextStyle(fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
+                          ),
                           decoration: InputDecoration(
                             hintText: _isIncome ? 'Misal: Gaji Pokok' : 'Misal: Makan Ramen',
-                            prefixIcon: const Icon(Icons.edit_note_rounded, color: AppColors.textSecondary),
+                            prefixIcon: Icon(
+                              Icons.edit_note_rounded,
+                              color: activeColor.withValues(alpha: 0.7),
+                            ),
+                            filled: true,
+                            fillColor: isDark
+                                ? Colors.white.withValues(alpha: 0.04)
+                                : Colors.black.withValues(alpha: 0.03),
+                            hintStyle: TextStyle(
+                              color: isDark
+                                  ? AppColors.textSecondaryDark.withValues(alpha: 0.5)
+                                  : AppColors.textSecondary.withValues(alpha: 0.5),
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(14),
+                              borderSide: BorderSide.none,
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(14),
+                              borderSide: BorderSide(
+                                color: (isDark ? Colors.white : Colors.black)
+                                    .withValues(alpha: 0.05),
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(14),
+                              borderSide: BorderSide(
+                                color: activeColor,
+                                width: 1.5,
+                              ),
+                            ),
                           ),
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return 'Nama transaksi tidak boleh kosong';
-                            }
-                            return null;
-                          },
                         ),
                         const SizedBox(height: 20),
 
@@ -310,7 +343,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
                                 style: OutlinedButton.styleFrom(
                                   backgroundColor: Colors.transparent,
                                   side: BorderSide(
-                                    color: AppColors.primary.withValues(alpha: 0.5),
+                                    color: activeColor.withValues(alpha: 0.5),
                                     width: 1.5,
                                   ),
                                   shape: RoundedRectangleBorder(
@@ -320,12 +353,12 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
                                 ),
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
-                                  children: const [
-                                    Icon(Icons.camera_alt_rounded, color: AppColors.primary, size: 20),
-                                    SizedBox(width: 8),
+                                  children: [
+                                    Icon(Icons.camera_alt_rounded, color: activeColor, size: 20),
+                                    const SizedBox(width: 8),
                                     Text(
                                       'Scan Struk',
-                                      style: TextStyle(color: AppColors.primary, fontSize: 14, fontWeight: FontWeight.bold),
+                                      style: TextStyle(color: activeColor, fontSize: 14, fontWeight: FontWeight.bold),
                                     ),
                                   ],
                                 ),
@@ -337,7 +370,23 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
                               flex: 3,
                               child: ElevatedButton(
                                 onPressed: _saveTransaction,
-                                child: const Text('Simpan'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: activeColor,
+                                  foregroundColor: Colors.white,
+                                  shadowColor: activeColor.withValues(alpha: 0.4),
+                                  elevation: 4,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                ),
+                                child: const Text(
+                                  'Simpan',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                               ),
                             ),
                           ],
@@ -462,12 +511,27 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
       decoration: BoxDecoration(
-        color: cardColor.withValues(alpha: 0.08),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            cardColor.withValues(alpha: 0.12),
+            cardColor.withValues(alpha: 0.04),
+          ],
+        ),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: cardColor.withValues(alpha: 0.15),
+          color: cardColor.withValues(alpha: 0.20),
           width: 1.5,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: cardColor.withValues(alpha: 0.03),
+            blurRadius: 10,
+            spreadRadius: 0,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -533,6 +597,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
 
   Widget _buildCategoryGrid(List<Map<String, String>> categories, bool isDark) {
     final trackColor = isDark ? AppColors.fillTrackDark : AppColors.fillTrack;
+    final activeColor = _isIncome ? AppColors.incomeGreen : AppColors.expenseRed;
     
     return GridView.builder(
       shrinkWrap: true,
@@ -561,12 +626,12 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
             padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
             decoration: BoxDecoration(
               color: isSelected
-                  ? AppColors.primary.withValues(alpha: 0.15)
+                  ? activeColor.withValues(alpha: 0.15)
                   : trackColor,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: isSelected
-                    ? AppColors.primary
+                    ? activeColor
                     : Colors.transparent,
                 width: 1.5,
               ),
@@ -587,7 +652,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
                         fontSize: 11,
                         fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
                         color: isSelected
-                            ? AppColors.primary
+                            ? activeColor
                             : (isDark ? AppColors.textPrimaryDark : AppColors.textPrimary),
                       ),
                       overflow: TextOverflow.ellipsis,
@@ -603,6 +668,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
   }
 
   Widget _buildCameraOverlay(bool isDark, ThemeData theme) {
+    final activeColor = _isIncome ? AppColors.incomeGreen : AppColors.expenseRed;
     return Positioned.fill(
       child: Container(
         color: Colors.black.withValues(alpha: 0.9),
@@ -641,7 +707,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
               width: 280,
               height: 380,
               decoration: BoxDecoration(
-                border: Border.all(color: AppColors.primary, width: 2),
+                border: Border.all(color: activeColor, width: 2),
                 borderRadius: BorderRadius.circular(24),
               ),
               child: ClipRRect(
@@ -681,10 +747,10 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
                             child: Container(
                               height: 3,
                               decoration: BoxDecoration(
-                                color: AppColors.primary,
+                                color: activeColor,
                                 boxShadow: [
                                   BoxShadow(
-                                    color: AppColors.primary.withValues(alpha: 0.8),
+                                    color: activeColor.withValues(alpha: 0.8),
                                     blurRadius: 8,
                                     spreadRadius: 2,
                                   )
@@ -702,12 +768,12 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
                         child: Center(
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
-                            children: const [
+                            children: [
                               CircularProgressIndicator(
-                                valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+                                valueColor: AlwaysStoppedAnimation<Color>(activeColor),
                               ),
-                              SizedBox(height: 16),
-                              Text(
+                              const SizedBox(height: 16),
+                              const Text(
                                 'Membaca data OCR struk...',
                                 style: TextStyle(
                                   color: Colors.white,
@@ -715,8 +781,8 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
                                   fontSize: 13,
                                 ),
                               ),
-                              SizedBox(height: 4),
-                              Text(
+                              const SizedBox(height: 4),
+                              const Text(
                                 'Ekstraksi item & total belanja',
                                 style: TextStyle(color: Colors.white54, fontSize: 11),
                               ),

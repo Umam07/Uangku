@@ -147,6 +147,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16.0),
                   child: ListView.separated(
+                    padding: EdgeInsets.zero,
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     itemCount: _categoriesData.length,
@@ -365,6 +366,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
     return Scaffold(
       body: SafeArea(
+        bottom: false,
         child: Column(
           children: [
             // Search Header (Padded to match page style)
@@ -611,6 +613,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                               ),
                               // Transactions under this date
                               ListView.separated(
+                                padding: EdgeInsets.zero,
                                 shrinkWrap: true,
                                 physics: const NeverScrollableScrollPhysics(),
                                 itemCount: txList.length,
