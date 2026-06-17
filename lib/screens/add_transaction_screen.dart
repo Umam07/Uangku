@@ -581,7 +581,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
 
       CustomToast.showSuccess(
         context,
-        '📸 OCR Struk Belanja Berhasil! Data diisi otomatis.',
+        'Struk berhasil dipindai.',
       );
     } catch (e) {
       if (!mounted) return;
