@@ -11,7 +11,8 @@ import 'screens/settings_screen.dart'; // import global themeNotifier
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Make system bars completely transparent
+  // Make system bars completely transparent and enable edge-to-edge mode
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
     systemNavigationBarColor: Colors.transparent,

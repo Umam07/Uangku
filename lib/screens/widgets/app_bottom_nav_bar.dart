@@ -155,39 +155,46 @@ class _AppBottomNavBarState extends State<AppBottomNavBar>
     return AnimatedBuilder(
       animation: _indicatorController,
       builder: (context, child) {
-        return ClipRRect(
-          borderRadius: BorderRadius.circular(32),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
-            child: Container(
-              height: 64,
-              decoration: BoxDecoration(
-                color: glassColor,
-                borderRadius: BorderRadius.circular(32),
-                border: Border.all(color: borderColor, width: 1.0),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: isDark ? 0.40 : 0.14),
-                    blurRadius: 30,
-                    spreadRadius: 0,
-                    offset: const Offset(0, 8),
-                  ),
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: isDark ? 0.18 : 0.06),
-                    blurRadius: 10,
-                    spreadRadius: 0,
-                    offset: const Offset(0, 2),
-                  ),
-                  // Top inner highlight
-                  BoxShadow(
-                    color: Colors.white.withValues(alpha: isDark ? 0.05 : 0.35),
-                    blurRadius: 0,
-                    spreadRadius: 0,
-                    offset: const Offset(0, 1),
-                  ),
-                ],
+        return Container(
+          height: 64,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(32),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.40 : 0.14),
+                blurRadius: 30,
+                spreadRadius: 0,
+                offset: const Offset(0, 8),
               ),
-              child: Stack(
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.18 : 0.06),
+                blurRadius: 10,
+                spreadRadius: 0,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(32),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
+              child: Container(
+                height: 64,
+                decoration: BoxDecoration(
+                  color: glassColor,
+                  borderRadius: BorderRadius.circular(32),
+                  border: Border.all(color: borderColor, width: 1.0),
+                  boxShadow: [
+                    // Top inner highlight
+                    BoxShadow(
+                      color: Colors.white.withValues(alpha: isDark ? 0.05 : 0.35),
+                      blurRadius: 0,
+                      spreadRadius: 0,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
+                ),
+                child: Stack(
                 children: [
                   // Animated sliding indicator background
                   if (_initialized)
@@ -247,10 +254,11 @@ class _AppBottomNavBarState extends State<AppBottomNavBar>
               ),
             ),
           ),
-        );
-      },
-    );
-  }
+        ),
+      );
+    },
+  );
+}
 }
 
 // ─── Data class ──────────────────────────────────────────────────────────────

@@ -107,6 +107,16 @@ class TransactionService {
     await saveTransactions(list);
   }
 
+  // Update a transaction (by id)
+  Future<void> updateTransaction(Transaction updatedTx) async {
+    final list = await getTransactions();
+    final index = list.indexWhere((tx) => tx.id == updatedTx.id);
+    if (index != -1) {
+      list[index] = updatedTx;
+      await saveTransactions(list);
+    }
+  }
+
   // Generate default initial transactions
   List<Transaction> _getDefaultTransactions() {
     final now = DateTime.now();
