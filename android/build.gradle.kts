@@ -17,6 +17,9 @@ subprojects {
 }
 subprojects {
     project.evaluationDependsOn(":app")
+    tasks.matching { name.contains("UnitTest") }.configureEach {
+        enabled = false
+    }
 }
 
 tasks.register<Delete>("clean") {

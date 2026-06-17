@@ -1,6 +1,9 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../theme/app_colors.dart';
 import '../services/transaction_service.dart';
 import 'widgets/custom_toast.dart';
@@ -32,6 +35,8 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
   bool _isScanning = false;
   Timer? _scanTimer;
   late AnimationController _animationController;
+  File? _scannedImageFile;
+  final ImagePicker _picker = ImagePicker();
 
   final List<Map<String, String>> _expenseCategories = [
     {'name': 'Makanan', 'emoji': '🍔'},
@@ -163,23 +168,217 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
     }
   }
 
-  // Trigger Mock Camera OCR Scanner
-  void _startMockScanner() {
-    HapticFeedback.lightImpact();
-    setState(() {
-      _showScanner = true;
-      _isScanning = false;
-    });
+  Future<void> _checkPermissionsAndPickImage() async {
+    final cameraStatus = await Permission.camera.status;
+    final photoStatus = await Permission.photos.status;
+    final storageStatus = await Permission.storage.status;
+    
+    final hasCamera = cameraStatus.isGranted;
+    final hasPhotos = photoStatus.isGranted || storageStatus.isGranted;
+    
+    if (!hasCamera || !hasPhotos) {
+      if (mounted) {
+        final result = await [
+          Permission.camera,
+          Permission.photos,
+          Permission.storage,
+        ].request();
+        
+        final grantedCamera = result[Permission.camera]?.isGranted ?? false;
+        final grantedPhotos = (result[Permission.photos]?.isGranted ?? false) || 
+                              (result[Permission.storage]?.isGranted ?? false);
+        
+        if (!grantedCamera && !grantedPhotos) {
+          if (mounted) {
+            _showPermissionDeniedDialog();
+          }
+          return;
+        }
+      }
+    }
+    
+    if (mounted) {
+      _showImageSourceSelection();
+    }
   }
 
-  void _triggerScanProcess() {
-    HapticFeedback.mediumImpact();
-    setState(() {
-      _isScanning = true;
-    });
+  void _showPermissionDeniedDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        return AlertDialog(
+          backgroundColor: isDark ? AppColors.surfaceDark : AppColors.surface,
+          title: Text(
+            'Akses Ditolak',
+            style: TextStyle(
+              color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: Text(
+            'Uangku memerlukan izin kamera dan galeri untuk memindai struk. Harap aktifkan di Pengaturan Sistem.',
+            style: TextStyle(
+              color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondary,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Batal'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                openAppSettings();
+              },
+              child: const Text('Pengaturan'),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
-    // Simulate OCR Reading for 2.5 seconds (satisfies design guide loading <= 5s)
-    Timer(const Duration(milliseconds: 2500), () {
+  void _showImageSourceSelection() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.surfaceDark : AppColors.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'Pilih Sumber Struk Belanja',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 20),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.camera_alt_rounded, color: AppColors.primary),
+                ),
+                title: Text(
+                  'Ambil Foto Langsung',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
+                  ),
+                ),
+                subtitle: const Text('Gunakan kamera untuk memotret struk belanja'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _capturePhotoWithCamera();
+                },
+              ),
+              const Divider(height: 24),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.accent.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.photo_library_rounded, color: AppColors.accent),
+                ),
+                title: Text(
+                  'Pilih dari Galeri',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
+                  ),
+                ),
+                subtitle: const Text('Gunakan foto struk belanja yang sudah ada'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickImageFromGallery();
+                },
+              ),
+              const SizedBox(height: 12),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _pickImageFromGallery() async {
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1080,
+        maxHeight: 1080,
+      );
+      if (image == null) return;
+      
+      setState(() {
+        _scannedImageFile = File(image.path);
+        _showScanner = true;
+        _isScanning = true;
+      });
+      
+      _startOcrScanTimer();
+    } catch (e) {
+      if (mounted) {
+        CustomToast.showWarning(context, 'Gagal memilih gambar dari galeri: $e');
+      }
+    }
+  }
+
+  Future<void> _capturePhotoWithCamera() async {
+    HapticFeedback.mediumImpact();
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.camera,
+        maxWidth: 1080,
+        maxHeight: 1080,
+      );
+      if (image == null) return;
+      
+      setState(() {
+        _scannedImageFile = File(image.path);
+        _showScanner = true;
+        _isScanning = true;
+      });
+      
+      _startOcrScanTimer();
+    } catch (e) {
+      if (mounted) {
+        CustomToast.showWarning(context, 'Gagal mengambil foto dari kamera: $e');
+      }
+    }
+  }
+
+  void _startOcrScanTimer() {
+    _scanTimer?.cancel();
+    _scanTimer = Timer(const Duration(milliseconds: 2500), () {
       if (!mounted) return;
       HapticFeedback.heavyImpact();
       setState(() {
@@ -339,7 +538,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
                             Expanded(
                               flex: 2,
                               child: OutlinedButton(
-                                onPressed: _startMockScanner,
+                                onPressed: _checkPermissionsAndPickImage,
                                 style: OutlinedButton.styleFrom(
                                   backgroundColor: Colors.transparent,
                                   side: BorderSide(
@@ -684,8 +883,11 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
                     icon: const Icon(Icons.close_rounded, color: Colors.white, size: 28),
                     onPressed: () {
                       HapticFeedback.lightImpact();
+                      _scanTimer?.cancel();
                       setState(() {
                         _showScanner = false;
+                        _isScanning = false;
+                        _scannedImageFile = null;
                       });
                     },
                   ),
@@ -714,24 +916,29 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
                 borderRadius: BorderRadius.circular(22),
                 child: Stack(
                   children: [
-                    // Mock Receipt Image Drawing
+                    // Mock/Real Receipt Image Drawing
                     Positioned.fill(
                       child: Container(
                         color: Colors.white12,
-                        child: Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: const [
-                              Icon(Icons.receipt_rounded, color: Colors.white38, size: 72),
-                              SizedBox(height: 12),
-                              Text(
-                                'Arahkan struk belanja\nke dalam bingkai',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(color: Colors.white54, fontSize: 12),
+                        child: _scannedImageFile != null
+                            ? Image.file(
+                                _scannedImageFile!,
+                                fit: BoxFit.cover,
+                              )
+                            : Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: const [
+                                    Icon(Icons.receipt_rounded, color: Colors.white38, size: 72),
+                                    SizedBox(height: 12),
+                                    Text(
+                                      'Arahkan struk belanja\nke dalam bingkai',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(color: Colors.white54, fontSize: 12),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ],
-                          ),
-                        ),
                       ),
                     ),
 
@@ -800,36 +1007,39 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
             ),
 
             // Camera Controls bottom bar
-            Padding(
-              padding: const EdgeInsets.only(bottom: 40.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  GestureDetector(
-                    onTap: _isScanning ? null : _triggerScanProcess,
-                    child: Container(
-                      width: 76,
-                      height: 76,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 4),
-                        color: Colors.white10,
-                      ),
-                      child: Center(
-                        child: Container(
-                          width: 56,
-                          height: 56,
-                          decoration: const BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.white,
+            if (_scannedImageFile == null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 40.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    GestureDetector(
+                      onTap: _isScanning ? null : _capturePhotoWithCamera,
+                      child: Container(
+                        width: 76,
+                        height: 76,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 4),
+                          color: Colors.white10,
+                        ),
+                        child: Center(
+                          child: Container(
+                            width: 56,
+                            height: 56,
+                            decoration: const BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.white,
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                ],
-              ),
-            ),
+                  ],
+                ),
+              )
+            else
+              const SizedBox(height: 116), // Maintain layout height
           ],
         ),
       ),

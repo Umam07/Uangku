@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../theme/app_colors.dart';
 import 'login_screen.dart';
 
@@ -20,6 +22,185 @@ class WelcomeScreen extends StatelessWidget {
         ),
       );
     }
+  }
+
+  Future<void> _requestPermissionsAndNavigate(BuildContext context) async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    // Check if permissions are already granted
+    final cameraStatus = await Permission.camera.status;
+    final photoStatus = await Permission.photos.status;
+    final storageStatus = await Permission.storage.status;
+    
+    final hasCamera = cameraStatus.isGranted;
+    final hasPhotos = photoStatus.isGranted || storageStatus.isGranted;
+    
+    if (hasCamera && hasPhotos) {
+      if (context.mounted) {
+        await _completeWelcome(context);
+      }
+    } else {
+      if (context.mounted) {
+        _showPermissionRequestSheet(context, isDark);
+      }
+    }
+  }
+
+  void _showPermissionRequestSheet(BuildContext context, bool isDark) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.surfaceDark : AppColors.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          padding: const EdgeInsets.only(
+            left: 24,
+            right: 24,
+            top: 16,
+            bottom: 32,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.security_outlined,
+                      color: AppColors.primary,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Izin Akses Fitur',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
+                          ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'Untuk menggunakan fitur pindaian struk belanja (OCR) secara maksimal, Uangku membutuhkan beberapa izin akses berikut:',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 20),
+              _buildPrivacyPoint(
+                context,
+                Icons.camera_alt_outlined,
+                'Kamera',
+                'Digunakan untuk mengambil foto struk belanja secara langsung untuk dianalisis nominalnya secara otomatis.',
+                isDark,
+              ),
+              const SizedBox(height: 16),
+              _buildPrivacyPoint(
+                context,
+                Icons.photo_library_outlined,
+                'Galeri Foto / Penyimpanan',
+                'Digunakan untuk memilih gambar struk belanja yang sudah tersimpan di galeri foto perangkat Anda.',
+                isDark,
+              ),
+              const SizedBox(height: 32),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _completeWelcome(context);
+                      },
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(
+                          color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.2),
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                      ),
+                      child: Text(
+                        'Nanti Saja',
+                        style: TextStyle(
+                          color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        Navigator.pop(context);
+                        if (Platform.isAndroid) {
+                          await [
+                            Permission.camera,
+                            Permission.photos,
+                            Permission.storage,
+                          ].request();
+                        } else {
+                          await [
+                            Permission.camera,
+                            Permission.photos,
+                          ].request();
+                        }
+                        if (context.mounted) {
+                          _completeWelcome(context);
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        elevation: 0,
+                      ),
+                      child: const Text(
+                        'Aktifkan Izin',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   void _showPrivacyPolicy(BuildContext context, bool isDark) {
@@ -349,7 +530,7 @@ class WelcomeScreen extends StatelessWidget {
                         width: double.infinity,
                         height: 56,
                         child: ElevatedButton(
-                          onPressed: () => _completeWelcome(context),
+                          onPressed: () => _requestPermissionsAndNavigate(context),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primary,
                             foregroundColor: Colors.white,

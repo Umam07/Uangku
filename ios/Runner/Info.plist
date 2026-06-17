@@ -66,5 +66,9 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>Aplikasi ini membutuhkan akses kamera untuk mengambil foto struk belanja yang akan dipindai.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Aplikasi ini membutuhkan akses galeri foto untuk memilih foto struk belanja yang akan dipindai.</string>
 </dict>
 </plist>
