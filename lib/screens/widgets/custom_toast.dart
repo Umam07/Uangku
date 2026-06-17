@@ -145,50 +145,95 @@ class ToastWidget extends StatefulWidget {
   State<ToastWidget> createState() => _ToastWidgetState();
 }
 
-class _ToastWidgetState extends State<ToastWidget> with SingleTickerProviderStateMixin {
+class _ToastWidgetState extends State<ToastWidget> with TickerProviderStateMixin {
   late final AnimationController _controller;
+  late final AnimationController _progressController;
+  late final AnimationController _dragRecoveryController;
+
   late final Animation<double> _fadeAnimation;
   late final Animation<Offset> _slideAnimation;
-  Timer? _timer;
+  late final Animation<double> _scaleAnimation;
+
+  double _dragOffset = 0.0;
+  double _dragStartOffset = 0.0;
+  bool _isDragging = false;
 
   @override
   void initState() {
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 350),
+      duration: const Duration(milliseconds: 400),
     );
 
     _fadeAnimation = CurvedAnimation(
       parent: _controller,
-      curve: Curves.easeIn,
+      curve: const Interval(0.0, 0.8, curve: Curves.easeOut),
     );
 
     _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, -1.0),
+      begin: const Offset(0, -0.4),
       end: Offset.zero,
     ).animate(CurvedAnimation(
       parent: _controller,
       curve: Curves.easeOutBack,
     ));
 
-    _controller.forward();
+    _scaleAnimation = Tween<double>(
+      begin: 0.92,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeOutBack,
+    ));
 
-    _timer = Timer(widget.duration, () {
-      dismissWithAnimation();
+    _progressController = AnimationController(
+      vsync: this,
+      duration: widget.duration,
+    );
+
+    _dragRecoveryController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 250),
+    );
+
+    _dragRecoveryController.addListener(() {
+      setState(() {
+        _dragOffset = Tween<double>(begin: _dragStartOffset, end: 0.0)
+            .evaluate(CurvedAnimation(
+              parent: _dragRecoveryController,
+              curve: Curves.easeOutCubic,
+            ));
+      });
+    });
+
+    _progressController.addStatusListener((status) {
+      if (status == AnimationStatus.dismissed) {
+        if (mounted && !_isDragging) {
+          dismissWithAnimation();
+        }
+      }
+    });
+
+    _controller.forward().then((_) {
+      if (mounted) {
+        _progressController.reverse(from: 1.0);
+      }
     });
   }
 
   @override
   void dispose() {
-    _timer?.cancel();
     _controller.dispose();
+    _progressController.dispose();
+    _dragRecoveryController.dispose();
     super.dispose();
   }
 
   Future<void> dismissWithAnimation() async {
-    _timer?.cancel();
     if (mounted) {
+      _progressController.stop();
+      _dragRecoveryController.stop();
       await _controller.reverse();
       widget.onRemove();
     }
@@ -215,7 +260,7 @@ class _ToastWidgetState extends State<ToastWidget> with SingleTickerProviderStat
         titleText = 'Gagal';
         break;
       case ToastType.warning:
-        iconData = Icons.warning_amber_rounded;
+        iconData = Icons.warning_rounded;
         typeColor = isDark ? AppColors.warnOrangeDark : AppColors.warnOrange;
         titleText = 'Peringatan';
         break;
@@ -234,123 +279,222 @@ class _ToastWidgetState extends State<ToastWidget> with SingleTickerProviderStat
       right: 16,
       child: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 480),
+          constraints: const BoxConstraints(maxWidth: 460),
           child: SlideTransition(
             position: _slideAnimation,
-            child: FadeTransition(
-              opacity: _fadeAnimation,
-              child: GestureDetector(
-                onVerticalDragUpdate: (details) {
-                  if (details.primaryDelta! < -8) {
-                    dismissWithAnimation();
-                  }
-                },
-                onTap: dismissWithAnimation,
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.08),
-                        blurRadius: 20,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(20),
-                    child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? Colors.black.withValues(alpha: 0.5)
-                              : Colors.white.withValues(alpha: 0.7),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: typeColor.withValues(alpha: 0.15),
-                            width: 1.5,
+            child: ScaleTransition(
+              scale: _scaleAnimation,
+              child: FadeTransition(
+                opacity: _fadeAnimation,
+                child: GestureDetector(
+                  onVerticalDragStart: (_) {
+                    _isDragging = true;
+                    _progressController.stop();
+                  },
+                  onVerticalDragUpdate: (details) {
+                    setState(() {
+                      if (details.primaryDelta! < 0) {
+                        _dragOffset += details.primaryDelta!;
+                      } else {
+                        _dragOffset += details.primaryDelta! * 0.25;
+                      }
+                    });
+                  },
+                  onVerticalDragEnd: (details) {
+                    _isDragging = false;
+                    if (_dragOffset < -25 || (details.primaryVelocity ?? 0) < -80) {
+                      dismissWithAnimation();
+                    } else {
+                      _dragStartOffset = _dragOffset;
+                      _dragRecoveryController.forward(from: 0.0).then((_) {
+                        if (mounted && !_isDragging) {
+                          _progressController.reverse(from: _progressController.value);
+                        }
+                      });
+                    }
+                  },
+                  child: Transform.translate(
+                    offset: Offset(0, _dragOffset),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(24),
+                        boxShadow: [
+                          BoxShadow(
+                            color: typeColor.withValues(alpha: isDark ? 0.18 : 0.08),
+                            blurRadius: 24,
+                            offset: const Offset(0, 10),
+                            spreadRadius: -4,
                           ),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 4,
-                              height: 38,
-                              decoration: BoxDecoration(
-                                color: typeColor,
-                                borderRadius: BorderRadius.circular(2),
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.08),
+                            blurRadius: 16,
+                            offset: const Offset(0, 4),
+                            spreadRadius: -2,
+                          ),
+                        ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(24),
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(24),
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: isDark
+                                    ? [
+                                        Color.lerp(const Color(0xFF1E1E22), typeColor, 0.05)!.withValues(alpha: 0.85),
+                                        const Color(0xFF121214).withValues(alpha: 0.85),
+                                      ]
+                                    : [
+                                        Color.lerp(Colors.white, typeColor, 0.03)!.withValues(alpha: 0.92),
+                                        const Color(0xFFF9F9FB).withValues(alpha: 0.92),
+                                      ],
+                              ),
+                              border: Border.all(
+                                color: typeColor.withValues(alpha: isDark ? 0.25 : 0.15),
+                                width: 1.2,
                               ),
                             ),
-                            const SizedBox(width: 12),
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: typeColor.withValues(alpha: 0.12),
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(
-                                iconData,
-                                color: typeColor,
-                                size: 22,
-                              ),
-                            ),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    titleText,
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.bold,
-                                      color: typeColor,
-                                      fontFamily: 'Poppins',
+                            child: Stack(
+                              clipBehavior: Clip.none,
+                              children: [
+                                Row(
+                                  children: [
+                                    Container(
+                                      width: 36,
+                                      height: 36,
+                                      decoration: BoxDecoration(
+                                        color: typeColor.withValues(alpha: isDark ? 0.15 : 0.1),
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: typeColor.withValues(alpha: isDark ? 0.3 : 0.2),
+                                          width: 1.2,
+                                        ),
+                                      ),
+                                      child: Center(
+                                        child: Icon(
+                                          iconData,
+                                          color: typeColor,
+                                          size: 18,
+                                        ),
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    widget.message,
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
-                                      color: textColor,
-                                      height: 1.3,
-                                      fontFamily: 'Poppins',
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            titleText,
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.bold,
+                                              color: typeColor,
+                                              fontFamily: 'Poppins',
+                                              letterSpacing: 0.3,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            widget.message,
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w500,
+                                              color: textColor,
+                                              height: 1.35,
+                                              fontFamily: 'Poppins',
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            if (widget.actionLabel != null && widget.onActionPressed != null) ...[
-                              const SizedBox(width: 12),
-                              TextButton(
-                                onPressed: () {
-                                  widget.onActionPressed!();
-                                  dismissWithAnimation();
-                                },
-                                style: TextButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                                  backgroundColor: AppColors.primary.withValues(alpha: 0.12),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10),
+                                    if (widget.actionLabel != null && widget.onActionPressed != null) ...[
+                                      const SizedBox(width: 8),
+                                      TextButton(
+                                        onPressed: () {
+                                          widget.onActionPressed!();
+                                          dismissWithAnimation();
+                                        },
+                                        style: TextButton.styleFrom(
+                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                          backgroundColor: typeColor.withValues(alpha: 0.12),
+                                          minimumSize: Size.zero,
+                                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(12),
+                                          ),
+                                        ),
+                                        child: Text(
+                                          widget.actionLabel!,
+                                          style: TextStyle(
+                                            color: typeColor,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 11,
+                                            fontFamily: 'Poppins',
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                    const SizedBox(width: 8),
+                                    GestureDetector(
+                                      onTap: dismissWithAnimation,
+                                      behavior: HitTestBehavior.opaque,
+                                      child: Container(
+                                        padding: const EdgeInsets.all(6),
+                                        decoration: BoxDecoration(
+                                          color: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.03),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: Icon(
+                                          Icons.close_rounded,
+                                          size: 12,
+                                          color: textColor.withValues(alpha: 0.4),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                Positioned(
+                                  left: -16,
+                                  right: -16,
+                                  bottom: -14,
+                                  child: Container(
+                                    height: 3,
+                                    color: typeColor.withValues(alpha: isDark ? 0.08 : 0.04),
                                   ),
                                 ),
-                                child: Text(
-                                  widget.actionLabel!,
-                                  style: const TextStyle(
-                                    color: AppColors.primary,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 12,
-                                    fontFamily: 'Poppins',
+                                Positioned(
+                                  left: -16,
+                                  right: -16,
+                                  bottom: -14,
+                                  child: AnimatedBuilder(
+                                    animation: _progressController,
+                                    builder: (context, child) {
+                                      return FractionallySizedBox(
+                                        alignment: Alignment.centerLeft,
+                                        widthFactor: _progressController.value,
+                                        child: Container(
+                                          height: 3,
+                                          decoration: BoxDecoration(
+                                            color: typeColor.withValues(alpha: 0.85),
+                                            borderRadius: const BorderRadius.only(
+                                              bottomLeft: Radius.circular(1.5),
+                                              bottomRight: Radius.circular(1.5),
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    },
                                   ),
                                 ),
-                              ),
-                            ],
-                          ],
+                              ],
+                            ),
+                          ),
                         ),
                       ),
                     ),
