@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../theme/app_colors.dart';
 import '../services/transaction_service.dart';
+import '../services/budget_service.dart';
 import '../services/ocr_service.dart';
 import 'widgets/custom_toast.dart';
 
@@ -293,14 +294,45 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
       date: DateTime.now(),
     );
 
+    // Budget checking before showing the success message
+    String? warningMsg;
+    if (!_isIncome) {
+      final budgetService = BudgetService();
+      final isBudgetEnabled = await budgetService.isGlobalBudgetEnabled();
+      if (isBudgetEnabled) {
+        final limit = await budgetService.getBudgetForCategory(_selectedCategory);
+        if (limit != null && limit > 0) {
+          final spending = await budgetService.getCurrentMonthSpendingByCategory();
+          final currentSpent = spending[_selectedCategory] ?? 0.0;
+          final newSpent = currentSpent + amount;
+          final ratio = newSpent / limit;
+          final categoryNameOnly = _selectedCategory.split(' ').skip(1).join(' ');
+
+          if (ratio >= 1.0) {
+            warningMsg = 'Anggaran $categoryNameOnly telah terlampaui! (${(ratio * 100).toInt()}% terpakai)';
+          } else if (ratio >= 0.8) {
+            warningMsg = 'Anggaran $categoryNameOnly telah terpakai ${(ratio * 100).toInt()}%!';
+          }
+        }
+      }
+    }
+
     await _transactionService.addTransaction(newTx);
     HapticFeedback.lightImpact();
     
     if (mounted) {
-      CustomToast.showSuccess(
-        context,
-        'Transaksi "${newTx.title}" disimpan!',
-      );
+      if (warningMsg != null) {
+        CustomToast.showWarning(
+          context,
+          'Transaksi "${newTx.title}" disimpan. ⚠️ $warningMsg',
+          duration: const Duration(seconds: 4),
+        );
+      } else {
+        CustomToast.showSuccess(
+          context,
+          'Transaksi "${newTx.title}" disimpan!',
+        );
+      }
       
       // Reset Form
       _titleController.clear();

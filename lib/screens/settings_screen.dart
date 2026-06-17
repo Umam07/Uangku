@@ -4,6 +4,7 @@ import '../theme/app_colors.dart';
 import '../services/auth_service.dart';
 import '../services/transaction_service.dart';
 import 'login_screen.dart';
+import 'budget_screen.dart';
 import 'widgets/custom_toast.dart';
 
 // Global ValueNotifier to control ThemeMode from Settings
@@ -1321,6 +1322,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
               inactiveTrackColor: isDark ? Colors.white24 : Colors.black12,
               onChanged: (val) => _toggleNotifications(val),
             ),
+          ),
+          Divider(
+            height: 1,
+            indent: 68,
+            endIndent: 16,
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.05)
+                : AppColors.textSecondary.withValues(alpha: 0.08),
+          ),
+          _buildSettingsTile(
+            icon: Icons.pie_chart_rounded,
+            iconColor: Colors.orange,
+            title: 'Kelola Anggaran',
+            subtitle: 'Atur batas pengeluaran kategori',
+            isDark: isDark,
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const BudgetScreen()),
+              );
+            },
           ),
         ],
       ),

@@ -6,6 +6,8 @@ import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
 import '../services/auth_service.dart';
 import '../services/transaction_service.dart';
+import '../services/budget_service.dart';
+import 'budget_screen.dart';
 import 'widgets/app_header.dart';
 import 'widgets/custom_toast.dart';
 
@@ -26,6 +28,8 @@ class HomeTab extends StatefulWidget {
 class _HomeTabState extends State<HomeTab> {
   final AuthService _authService = AuthService();
   final TransactionService _transactionService = TransactionService();
+  final BudgetService _budgetService = BudgetService();
+  
   Map<String, String>? _userData;
   List<Transaction> _transactions = [];
   bool _isLoading = true;
@@ -38,6 +42,11 @@ class _HomeTabState extends State<HomeTab> {
   Map<String, double> _categoryExpenses = {};
   Map<String, double> _categoryIncomes = {};
   bool _showIncomeChart = false;
+
+  // Budgeting states
+  bool _isGlobalBudgetEnabled = false;
+  double _totalBudgetLimit = 0.0;
+  double _totalBudgetSpent = 0.0;
 
   @override
   void initState() {
@@ -66,6 +75,23 @@ class _HomeTabState extends State<HomeTab> {
       }
     }
 
+    // Budget Calculations
+    final isBudgetEnabled = await _budgetService.isGlobalBudgetEnabled();
+    double totalLimit = 0.0;
+    double totalSpent = 0.0;
+
+    if (isBudgetEnabled) {
+      final budgets = await _budgetService.getBudgets();
+      final currentSpending = await _budgetService.getCurrentMonthSpendingByCategory();
+      
+      budgets.forEach((category, limit) {
+        if (limit > 0) {
+          totalLimit += limit;
+          totalSpent += currentSpending[category] ?? 0.0;
+        }
+      });
+    }
+
     setState(() {
       _userData = user;
       _transactions = txs;
@@ -74,6 +100,9 @@ class _HomeTabState extends State<HomeTab> {
       _totalBalance = income - expense;
       _categoryExpenses = catExpenses;
       _categoryIncomes = catIncomes;
+      _isGlobalBudgetEnabled = isBudgetEnabled;
+      _totalBudgetLimit = totalLimit;
+      _totalBudgetSpent = totalSpent;
       _isLoading = false;
     });
   }
@@ -158,6 +187,15 @@ class _HomeTabState extends State<HomeTab> {
                   child: _buildBalanceCard(isDark, theme),
                 ),
                 const SizedBox(height: AppSpacing.l),
+
+                // Budget Summary Card
+                if (_isGlobalBudgetEnabled && _totalBudgetLimit > 0) ...[
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.l),
+                    child: _buildBudgetSummaryCard(isDark, theme),
+                  ),
+                  const SizedBox(height: AppSpacing.l),
+                ],
 
                 // Donut Chart Composition
                 Padding(
@@ -274,6 +312,159 @@ class _HomeTabState extends State<HomeTab> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildBudgetSummaryCard(bool isDark, ThemeData theme) {
+    if (!_isGlobalBudgetEnabled || _totalBudgetLimit <= 0) {
+      return const SizedBox.shrink();
+    }
+
+    final double ratio = (_totalBudgetSpent / _totalBudgetLimit).clamp(0.0, 1.0);
+    final percentage = (ratio * 100).toInt();
+    final remaining = _totalBudgetLimit - _totalBudgetSpent;
+    final isExceeded = remaining < 0;
+
+    Color progressColor;
+    if (ratio >= 1.0) {
+      progressColor = AppColors.danger;
+    } else if (ratio >= 0.8) {
+      progressColor = AppColors.warnOrange;
+    } else {
+      progressColor = AppColors.accent; // green
+    }
+
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.surfaceDark : AppColors.surface,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusCard),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            HapticFeedback.lightImpact();
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const BudgetScreen()),
+            ).then((_) => _loadData());
+          },
+          borderRadius: BorderRadius.circular(AppSpacing.radiusCard),
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.l),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: progressColor.withValues(alpha: 0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.donut_large_rounded,
+                            color: progressColor,
+                            size: 14,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Sisa Anggaran Bulanan',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        const Text(
+                          'Kelola',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const Icon(
+                          Icons.chevron_right_rounded,
+                          color: AppColors.primary,
+                          size: 16,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
+                // Amount
+                Text(
+                  isExceeded
+                      ? 'Lebih ${_formatCurrency(remaining.abs())}'
+                      : 'Sisa ${_formatCurrency(remaining)}',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: isExceeded
+                        ? AppColors.danger
+                        : (isDark ? AppColors.textPrimaryDark : AppColors.textPrimary),
+                    letterSpacing: -0.5,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
+                ),
+                const SizedBox(height: 4),
+
+                // Description
+                Text(
+                  '${_formatCurrency(_totalBudgetSpent)} terpakai dari ${_formatCurrency(_totalBudgetLimit)} ($percentage%)',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondary,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // Progress Bar
+                Container(
+                  height: 6,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.04),
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                  child: FractionallySizedBox(
+                    alignment: Alignment.centerLeft,
+                    widthFactor: ratio,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: progressColor,
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
