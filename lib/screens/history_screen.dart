@@ -671,6 +671,23 @@ class _HistoryScreenState extends State<HistoryScreen> {
         bottom: false,
         child: Column(
           children: [
+            // Clean Top Bar
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+              child: Row(
+                children: [
+                  Text(
+                    'Riwayat Transaksi',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
             // Search Header
             Padding(
               padding: const EdgeInsets.symmetric(
