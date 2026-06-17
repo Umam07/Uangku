@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -214,61 +215,151 @@ class _HomeTabState extends State<HomeTab> {
     );
   }
 
+  Widget _buildGlassStatPanel({
+    required String title,
+    required String amount,
+    required IconData icon,
+    required Color iconColor,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.15),
+          width: 1.0,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: iconColor.withValues(alpha: 0.2),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              icon,
+              color: Colors.white,
+              size: 14,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.7),
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  amount,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    fontFeatures: [FontFeature.tabularFigures()],
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildBalanceCard(bool isDark, ThemeData theme) {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AppColors.primary, Color(0xFFF97316), AppColors.primaryDark],
+        gradient: LinearGradient(
+          colors: [
+            AppColors.primary,
+            const Color(0xFFF97316),
+            const Color(0xFFEC4899),
+            AppColors.primaryDark,
+          ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
+          stops: const [0.0, 0.35, 0.7, 1.0],
         ),
-        borderRadius: BorderRadius.circular(AppSpacing.radiusCard), // 16
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06), // shadow y:2, blur:8, rgba(0,0,0,0.06)
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            color: AppColors.primary.withValues(alpha: 0.25),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
+          ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
         ],
         border: Border.all(
-          color: Colors.white.withValues(alpha: 0.15),
+          color: Colors.white.withValues(alpha: 0.22),
           width: 1.5,
         ),
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(AppSpacing.radiusCard - 1.5),
+        borderRadius: BorderRadius.circular(22.5),
         child: Stack(
           children: [
-            // Abstract decorative circles for premium design
+            // Abstract decorative circles/shapes with blur for mesh gradient effect
             Positioned(
-              right: -50,
-              top: -50,
+              right: -20,
+              top: -30,
               child: Container(
-                width: 160,
-                height: 160,
+                width: 150,
+                height: 150,
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.08),
+                  color: const Color(0xFFFDE047).withValues(alpha: 0.15),
                   shape: BoxShape.circle,
                 ),
               ),
             ),
             Positioned(
-              left: -30,
-              bottom: -50,
+              left: -40,
+              bottom: -40,
               child: Container(
-                width: 120,
-                height: 120,
+                width: 180,
+                height: 180,
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.06),
+                  color: const Color(0xFFEC4899).withValues(alpha: 0.2),
                   shape: BoxShape.circle,
                 ),
               ),
             ),
-            
-            // Card Content
+            Positioned(
+              right: 60,
+              bottom: -80,
+              child: Container(
+                width: 140,
+                height: 140,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF3B82F6).withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ),
+            Positioned.fill(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+                child: Container(color: Colors.transparent),
+              ),
+            ),
             Padding(
-              padding: const EdgeInsets.all(AppSpacing.l), // padding 16
+              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 24.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -276,56 +367,88 @@ class _HomeTabState extends State<HomeTab> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Row(
-                        children: const [
-                          Icon(
-                            Icons.account_balance_wallet_rounded,
-                            color: Colors.white70,
-                            size: 16,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(
+                              Icons.wallet_rounded,
+                              color: Colors.white,
+                              size: 16,
+                            ),
                           ),
-                          SizedBox(width: 6),
+                          const SizedBox(width: 10),
                           Text(
                             'Total Saldo',
                             style: TextStyle(
-                              color: Colors.white70,
+                              color: Colors.white.withValues(alpha: 0.9),
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
-                              letterSpacing: 0.2,
+                              letterSpacing: 0.5,
                             ),
                           ),
                         ],
                       ),
-                      GestureDetector(
-                        onTap: () {
-                          HapticFeedback.lightImpact();
-                          setState(() {
-                            _obscureBalance = !_obscureBalance;
-                          });
-                        },
-                        behavior: HitTestBehavior.opaque,
-                        child: Padding(
-                          padding: const EdgeInsets.all(4.0),
-                          child: Icon(
-                            _obscureBalance 
-                                ? Icons.visibility_off_outlined 
-                                : Icons.visibility_outlined,
-                            color: Colors.white70,
-                            size: 20,
+                      Row(
+                        children: [
+                          Text(
+                            'Uangku Pay',
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.6),
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1.0,
+                            ),
                           ),
-                        ),
+                          const SizedBox(width: 12),
+                          GestureDetector(
+                            onTap: () {
+                              HapticFeedback.lightImpact();
+                              setState(() {
+                                _obscureBalance = !_obscureBalance;
+                              });
+                            },
+                            behavior: HitTestBehavior.opaque,
+                            child: Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.12),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                _obscureBalance 
+                                    ? Icons.visibility_off_rounded 
+                                    : Icons.visibility_rounded,
+                                color: Colors.white,
+                                size: 16,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 16),
                   Text(
                     _obscureBalance 
                         ? 'Rp ••••••' 
                         : '${_totalBalance < 0 ? '-' : ''}${_formatCurrency(_totalBalance)}',
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 34,
+                      fontSize: 36,
                       fontWeight: FontWeight.bold,
-                      letterSpacing: -0.5,
+                      letterSpacing: -0.8,
                       fontFeatures: [FontFeature.tabularFigures()],
+                      shadows: [
+                        Shadow(
+                          color: Colors.black12,
+                          offset: Offset(0, 2),
+                          blurRadius: 4,
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -333,102 +456,21 @@ class _HomeTabState extends State<HomeTab> {
                     children: [
                       // Income card
                       Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(AppSpacing.radiusButton), // 12
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.1),
-                              width: 1,
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(6),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.2),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Text('💰', style: TextStyle(fontSize: 14)),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text(
-                                      'Pemasukan',
-                                      style: TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.w500),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      _obscureBalance ? 'Rp ••••••' : '+ ${_formatCurrency(_totalIncome)}',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
-                                        fontFeatures: [FontFeature.tabularFigures()],
-                                      ),
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
+                        child: _buildGlassStatPanel(
+                          title: 'Pemasukan',
+                          amount: _obscureBalance ? 'Rp ••••••' : '+ ${_formatCurrency(_totalIncome)}',
+                          icon: Icons.arrow_downward_rounded,
+                          iconColor: const Color(0xFF34C759),
                         ),
                       ),
                       const SizedBox(width: 12),
-                      
                       // Expense card
                       Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(AppSpacing.radiusButton), // 12
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.1),
-                              width: 1,
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(6),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.2),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Text('💸', style: TextStyle(fontSize: 14)),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text(
-                                      'Pengeluaran',
-                                      style: TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.w500),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      _obscureBalance ? 'Rp ••••••' : '- ${_formatCurrency(_totalExpense)}',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
-                                        fontFeatures: [FontFeature.tabularFigures()],
-                                      ),
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
+                        child: _buildGlassStatPanel(
+                          title: 'Pengeluaran',
+                          amount: _obscureBalance ? 'Rp ••••••' : '- ${_formatCurrency(_totalExpense)}',
+                          icon: Icons.arrow_upward_rounded,
+                          iconColor: const Color(0xFFFF3B30),
                         ),
                       ),
                     ],
