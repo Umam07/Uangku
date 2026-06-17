@@ -35,6 +35,8 @@ class _HomeTabState extends State<HomeTab> {
   double _totalExpense = 0;
   double _totalBalance = 0;
   Map<String, double> _categoryExpenses = {};
+  Map<String, double> _categoryIncomes = {};
+  bool _showIncomeChart = false;
 
   @override
   void initState() {
@@ -51,10 +53,12 @@ class _HomeTabState extends State<HomeTab> {
     double income = 0;
     double expense = 0;
     Map<String, double> catExpenses = {};
+    Map<String, double> catIncomes = {};
 
     for (var tx in txs) {
       if (tx.isIncome) {
         income += tx.amount;
+        catIncomes[tx.category] = (catIncomes[tx.category] ?? 0) + tx.amount;
       } else {
         expense += tx.amount;
         catExpenses[tx.category] = (catExpenses[tx.category] ?? 0) + tx.amount;
@@ -68,6 +72,7 @@ class _HomeTabState extends State<HomeTab> {
       _totalExpense = expense;
       _totalBalance = income - expense;
       _categoryExpenses = catExpenses;
+      _categoryIncomes = catIncomes;
       _isLoading = false;
     });
   }
@@ -437,6 +442,106 @@ class _HomeTabState extends State<HomeTab> {
     );
   }
 
+  Widget _buildChartTypeSelector(bool isDark) {
+    final trackColor = isDark ? AppColors.fillTrackDark : AppColors.fillTrack;
+    final activePillColor = isDark ? Colors.white.withValues(alpha: 0.15) : Colors.white;
+    final inactiveTextColor = isDark ? AppColors.labelTertiaryDark : AppColors.labelTertiary;
+    
+    final selectedIndex = _showIncomeChart ? 1 : 0;
+    final double alignX = selectedIndex == 0 ? -1.0 : 1.0;
+    
+    return Container(
+      width: 180, // compact width
+      height: 28,
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        color: trackColor,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Stack(
+        children: [
+          AnimatedAlign(
+            alignment: Alignment(alignX, 0.0),
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeInOut,
+            child: FractionallySizedBox(
+              widthFactor: 0.5,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: activePillColor,
+                  borderRadius: BorderRadius.circular(6),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.05),
+                      blurRadius: 2,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Row(
+            children: [
+              Expanded(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {
+                    if (_showIncomeChart) {
+                      HapticFeedback.lightImpact();
+                      setState(() {
+                        _showIncomeChart = false;
+                        _touchedIndex = -1;
+                      });
+                    }
+                  },
+                  child: Center(
+                    child: Text(
+                      'Pengeluaran',
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: selectedIndex == 0 ? FontWeight.bold : FontWeight.normal,
+                        color: selectedIndex == 0 
+                            ? AppColors.expenseRed 
+                            : inactiveTextColor,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {
+                    if (!_showIncomeChart) {
+                      HapticFeedback.lightImpact();
+                      setState(() {
+                        _showIncomeChart = true;
+                        _touchedIndex = -1;
+                      });
+                    }
+                  },
+                  child: Center(
+                    child: Text(
+                      'Pemasukan',
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: selectedIndex == 1 ? FontWeight.bold : FontWeight.normal,
+                        color: selectedIndex == 1 
+                            ? AppColors.incomeGreen 
+                            : inactiveTextColor,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildChartCard(bool isDark, ThemeData theme) {
     return Container(
       width: double.infinity,
@@ -455,13 +560,22 @@ class _HomeTabState extends State<HomeTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Komposisi Pengeluaran',
-            style: theme.textTheme.titleLarge?.copyWith(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  _showIncomeChart ? 'Komposisi Pemasukan' : 'Komposisi Pengeluaran',
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              _buildChartTypeSelector(isDark),
+            ],
           ),
           const SizedBox(height: 20),
           Row(
@@ -506,7 +620,10 @@ class _HomeTabState extends State<HomeTab> {
   }
 
   List<PieChartSectionData> _showingSections() {
-    if (_totalExpense == 0) {
+    final total = _showIncomeChart ? _totalIncome : _totalExpense;
+    final data = _showIncomeChart ? _categoryIncomes : _categoryExpenses;
+
+    if (total == 0) {
       return [
         PieChartSectionData(
           color: Colors.grey.withValues(alpha: 0.3),
@@ -518,11 +635,11 @@ class _HomeTabState extends State<HomeTab> {
     }
 
     int idx = 0;
-    return _categoryExpenses.entries.map((entry) {
+    return data.entries.map((entry) {
       final isTouched = idx == _touchedIndex;
       idx++;
       final double radius = isTouched ? 26.0 : 18.0;
-      final percentage = (entry.value / _totalExpense) * 100;
+      final percentage = (entry.value / total) * 100;
 
       return PieChartSectionData(
         color: _getCategoryColor(entry.key),
@@ -539,10 +656,13 @@ class _HomeTabState extends State<HomeTab> {
   }
 
   Widget _buildDynamicLegend(bool isDark) {
-    if (_categoryExpenses.isEmpty) {
+    final total = _showIncomeChart ? _totalIncome : _totalExpense;
+    final data = _showIncomeChart ? _categoryIncomes : _categoryExpenses;
+
+    if (data.isEmpty) {
       return Center(
         child: Text(
-          'Belum ada pengeluaran',
+          _showIncomeChart ? 'Belum ada pemasukan' : 'Belum ada pengeluaran',
           textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 12,
@@ -555,8 +675,8 @@ class _HomeTabState extends State<HomeTab> {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: _categoryExpenses.entries.map((entry) {
-        final percentage = (entry.value / _totalExpense) * 100;
+      children: data.entries.map((entry) {
+        final percentage = (entry.value / total) * 100;
         final color = _getCategoryColor(entry.key);
         
         final emoji = entry.key.split(' ').first;

@@ -22,6 +22,9 @@ class _ReportScreenState extends State<ReportScreen> {
   double _totalExpense = 0;
   Map<String, double> _categoryExpenses = {};
   Map<String, int> _categoryTransactionCount = {};
+  Map<String, double> _categoryIncomes = {};
+  Map<String, int> _categoryIncomeCounts = {};
+  bool _showIncomeReport = false;
 
   // YoY Savings & monthly savings trend variables
   double _currentYearSavings = 0;
@@ -99,10 +102,14 @@ class _ReportScreenState extends State<ReportScreen> {
     double expense = 0;
     Map<String, double> catExpenses = {};
     Map<String, int> catCounts = {};
+    Map<String, double> catIncomes = {};
+    Map<String, int> catIncomeCounts = {};
 
     for (var tx in filteredTxs) {
       if (tx.isIncome) {
         income += tx.amount;
+        catIncomes[tx.category] = (catIncomes[tx.category] ?? 0) + tx.amount;
+        catIncomeCounts[tx.category] = (catIncomeCounts[tx.category] ?? 0) + 1;
       } else {
         expense += tx.amount;
         catExpenses[tx.category] = (catExpenses[tx.category] ?? 0) + tx.amount;
@@ -116,6 +123,8 @@ class _ReportScreenState extends State<ReportScreen> {
       _totalExpense = expense;
       _categoryExpenses = catExpenses;
       _categoryTransactionCount = catCounts;
+      _categoryIncomes = catIncomes;
+      _categoryIncomeCounts = catIncomeCounts;
 
       _currentYearSavings = currentYearSavings;
       _lastYearSavings = lastYearSavings;
@@ -189,8 +198,9 @@ class _ReportScreenState extends State<ReportScreen> {
   }
 
   String _getCategoryNameByIndex(int index) {
-    if (index < 0 || index >= _categoryExpenses.length) return '';
-    final entry = _categoryExpenses.entries.elementAt(index);
+    final data = _showIncomeReport ? _categoryIncomes : _categoryExpenses;
+    if (index < 0 || index >= data.length) return '';
+    final entry = data.entries.elementAt(index);
     final parts = entry.key.split(' ');
     if (parts.length > 1) {
       return parts.skip(1).join(' ');
@@ -199,8 +209,9 @@ class _ReportScreenState extends State<ReportScreen> {
   }
 
   double _getCategoryExpenseByIndex(int index) {
-    if (index < 0 || index >= _categoryExpenses.length) return 0;
-    return _categoryExpenses.values.elementAt(index);
+    final data = _showIncomeReport ? _categoryIncomes : _categoryExpenses;
+    if (index < 0 || index >= data.length) return 0;
+    return data.values.elementAt(index);
   }
 
   String _getDayName(int index) {
@@ -668,6 +679,122 @@ class _ReportScreenState extends State<ReportScreen> {
     );
   }
 
+  Widget _buildReportTypeSelector(bool isDark) {
+    final trackColor = isDark ? AppColors.fillTrackDark : AppColors.fillTrack;
+    final activePillColor = isDark ? Colors.white.withValues(alpha: 0.15) : Colors.white;
+    final inactiveTextColor = isDark ? AppColors.labelTertiaryDark : AppColors.labelTertiary;
+    
+    final selectedIndex = _showIncomeReport ? 1 : 0;
+    final double alignX = selectedIndex == 0 ? -1.0 : 1.0;
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 8),
+          child: Text(
+            'Analisis Kategori',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondary,
+            ),
+          ),
+        ),
+        Container(
+          width: double.infinity,
+          height: 40,
+          padding: const EdgeInsets.all(3),
+          decoration: BoxDecoration(
+            color: trackColor,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Stack(
+            children: [
+              AnimatedAlign(
+                alignment: Alignment(alignX, 0.0),
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeInOut,
+                child: FractionallySizedBox(
+                  widthFactor: 0.5,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: activePillColor,
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.05),
+                          blurRadius: 2,
+                          offset: const Offset(0, 1),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () {
+                        if (_showIncomeReport) {
+                          HapticFeedback.lightImpact();
+                          setState(() {
+                            _showIncomeReport = false;
+                            _touchedPieIndex = -1;
+                          });
+                        }
+                      },
+                      child: Center(
+                        child: Text(
+                          'Distribusi Pengeluaran 💸',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: selectedIndex == 0 ? FontWeight.bold : FontWeight.normal,
+                            color: selectedIndex == 0 
+                                ? AppColors.expenseRed 
+                                : inactiveTextColor,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () {
+                        if (!_showIncomeReport) {
+                          HapticFeedback.lightImpact();
+                          setState(() {
+                            _showIncomeReport = true;
+                            _touchedPieIndex = -1;
+                          });
+                        }
+                      },
+                      child: Center(
+                        child: Text(
+                          'Distribusi Pemasukan 💰',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: selectedIndex == 1 ? FontWeight.bold : FontWeight.normal,
+                            color: selectedIndex == 1 
+                                ? AppColors.incomeGreen 
+                                : inactiveTextColor,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -711,6 +838,10 @@ class _ReportScreenState extends State<ReportScreen> {
                           child: _showSavingsGraph ? _buildSavingsChart(isDark, theme) : const SizedBox(),
                         ),
                       ],
+
+                      // Donut & Categories Type Selector
+                      _buildReportTypeSelector(isDark),
+                      const SizedBox(height: 16),
 
                       // Category breakdown donut chart
                       _buildDonutChartCard(isDark, theme),
@@ -1075,118 +1206,127 @@ class _ReportScreenState extends State<ReportScreen> {
   }
 
   Widget _buildDonutChartCard(bool isDark, ThemeData theme) {
-    return Card(
+    final total = _showIncomeReport ? _totalIncome : _totalExpense;
+    final data = _showIncomeReport ? _categoryIncomes : _categoryExpenses;
+
+    return Container(
       margin: const EdgeInsets.only(bottom: 16),
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Distribusi Pengeluaran',
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontSize: 15,
-                fontWeight: FontWeight.bold,
-                color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
+      child: Card(
+        margin: EdgeInsets.zero,
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                _showIncomeReport ? 'Distribusi Pemasukan' : 'Distribusi Pengeluaran',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
+                ),
               ),
-            ),
-            const SizedBox(height: 20),
-            _categoryExpenses.isEmpty
-                ? Center(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 30.0),
-                      child: Column(
-                        children: const [
-                          Text('📊', style: TextStyle(fontSize: 40)),
-                          SizedBox(height: 8),
-                          Text(
-                            'Tidak ada pengeluaran\npada periode ini.',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
-                          ),
-                        ],
+              const SizedBox(height: 20),
+              data.isEmpty
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 30.0),
+                        child: Column(
+                          children: [
+                            const Text('📊', style: TextStyle(fontSize: 40)),
+                            const SizedBox(height: 8),
+                            Text(
+                              _showIncomeReport
+                                  ? 'Tidak ada pemasukan\npada periode ini.'
+                                  : 'Tidak ada pengeluaran\npada periode ini.',
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  )
-                : Row(
-                    children: [
-                      // Donut Chart with dynamic center text
-                      Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          SizedBox(
-                            width: 130,
-                            height: 130,
-                            child: PieChart(
-                              PieChartData(
-                                pieTouchData: PieTouchData(
-                                  touchCallback: (FlTouchEvent event, pieTouchResponse) {
-                                    setState(() {
-                                      if (!event.isInterestedForInteractions ||
-                                          pieTouchResponse == null ||
-                                          pieTouchResponse.touchedSection == null) {
-                                        _touchedPieIndex = -1;
-                                        return;
-                                      }
-                                      _touchedPieIndex = pieTouchResponse.touchedSection!.touchedSectionIndex;
-                                    });
-                                  },
+                    )
+                  : Row(
+                      children: [
+                        // Donut Chart with dynamic center text
+                        Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            SizedBox(
+                              width: 130,
+                              height: 130,
+                              child: PieChart(
+                                PieChartData(
+                                  pieTouchData: PieTouchData(
+                                    touchCallback: (FlTouchEvent event, pieTouchResponse) {
+                                      setState(() {
+                                        if (!event.isInterestedForInteractions ||
+                                            pieTouchResponse == null ||
+                                            pieTouchResponse.touchedSection == null) {
+                                          _touchedPieIndex = -1;
+                                          return;
+                                        }
+                                        _touchedPieIndex = pieTouchResponse.touchedSection!.touchedSectionIndex;
+                                      });
+                                    },
+                                  ),
+                                  borderData: FlBorderData(show: false),
+                                  sectionsSpace: 3,
+                                  centerSpaceRadius: 42,
+                                  sections: _getPieSections(),
                                 ),
-                                borderData: FlBorderData(show: false),
-                                sectionsSpace: 3,
-                                centerSpaceRadius: 42,
-                                sections: _getPieSections(),
                               ),
                             ),
-                          ),
-                          // Center Info Text Overlay
-                          IgnorePointer(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  _touchedPieIndex == -1 
-                                      ? 'Total' 
-                                      : _getCategoryNameByIndex(_touchedPieIndex),
-                                  style: TextStyle(
-                                    fontSize: _touchedPieIndex == -1 ? 10 : 9,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.textSecondary,
+                            // Center Info Text Overlay
+                            IgnorePointer(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    _touchedPieIndex == -1 
+                                        ? 'Total' 
+                                        : _getCategoryNameByIndex(_touchedPieIndex),
+                                    style: TextStyle(
+                                      fontSize: _touchedPieIndex == -1 ? 10 : 9,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                  textAlign: TextAlign.center,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  _touchedPieIndex == -1 
-                                      ? _formatCompactCurrency(_totalExpense)
-                                      : _formatCompactCurrency(_getCategoryExpenseByIndex(_touchedPieIndex)),
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                    color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    _touchedPieIndex == -1 
+                                        ? _formatCompactCurrency(total)
+                                        : _formatCompactCurrency(_getCategoryExpenseByIndex(_touchedPieIndex)),
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
+                                    ),
+                                    textAlign: TextAlign.center,
                                   ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(child: _buildPieLegend(isDark)),
-                    ],
-                  ),
-          ],
+                          ],
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(child: _buildPieLegend(isDark)),
+                      ],
+                    ),
+            ],
+          ),
         ),
       ),
     );
   }
 
   List<PieChartSectionData> _getPieSections() {
+    final data = _showIncomeReport ? _categoryIncomes : _categoryExpenses;
     int idx = 0;
-    return _categoryExpenses.entries.map((entry) {
+    return data.entries.map((entry) {
       final isTouched = idx == _touchedPieIndex;
       idx++;
       final double radius = isTouched ? 22.0 : 16.0;
@@ -1207,11 +1347,14 @@ class _ReportScreenState extends State<ReportScreen> {
   }
 
   Widget _buildPieLegend(bool isDark) {
+    final total = _showIncomeReport ? _totalIncome : _totalExpense;
+    final data = _showIncomeReport ? _categoryIncomes : _categoryExpenses;
+
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: _categoryExpenses.entries.map((entry) {
-        final percentage = (entry.value / _totalExpense) * 100;
+      children: data.entries.map((entry) {
+        final percentage = total == 0 ? 0.0 : (entry.value / total) * 100;
         final color = _getCategoryColor(entry.key);
         
         final emoji = entry.key.split(' ').first;
@@ -1274,7 +1417,7 @@ class _ReportScreenState extends State<ReportScreen> {
   }
 
   Widget _buildTopCategoriesCard(bool isDark, ThemeData theme) {
-    final sortedCategories = _categoryExpenses.entries.toList()
+    final sortedCategories = (_showIncomeReport ? _categoryIncomes : _categoryExpenses).entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
 
     return Card(
@@ -1285,7 +1428,7 @@ class _ReportScreenState extends State<ReportScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Rincian Kategori Teratas',
+              _showIncomeReport ? 'Rincian Kategori Teratas (Pemasukan)' : 'Rincian Kategori Teratas (Pengeluaran)',
               style: theme.textTheme.titleLarge?.copyWith(
                 fontSize: 15,
                 fontWeight: FontWeight.bold,
@@ -1294,12 +1437,12 @@ class _ReportScreenState extends State<ReportScreen> {
             ),
             const SizedBox(height: 16),
             sortedCategories.isEmpty
-                ? const Center(
+                ? Center(
                     child: Padding(
-                      padding: EdgeInsets.symmetric(vertical: 20.0),
+                      padding: const EdgeInsets.symmetric(vertical: 20.0),
                       child: Text(
-                        'Belum ada data belanja.',
-                        style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                        _showIncomeReport ? 'Belum ada data pemasukan.' : 'Belum ada data belanja.',
+                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
                       ),
                     ),
                   )
@@ -1316,7 +1459,7 @@ class _ReportScreenState extends State<ReportScreen> {
                       final item = sortedCategories[index];
                       final category = item.key;
                       final totalAmount = item.value;
-                      final txCount = _categoryTransactionCount[category] ?? 0;
+                      final txCount = (_showIncomeReport ? _categoryIncomeCounts : _categoryTransactionCount)[category] ?? 0;
                       
                       final emoji = category.split(' ').first;
                       final catName = category.split(' ').skip(1).join(' ');
@@ -1364,12 +1507,12 @@ class _ReportScreenState extends State<ReportScreen> {
                           ),
                           // Spent amount
                           Text(
-                            _formatCurrency(totalAmount),
-                            style: const TextStyle(
+                            '${_showIncomeReport ? '+' : '-'} ${_formatCurrency(totalAmount).replaceFirst('Rp ', '')}',
+                            style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 14,
-                              color: AppColors.expenseRed,
-                              fontFeatures: [FontFeature.tabularFigures()],
+                              color: _showIncomeReport ? AppColors.incomeGreen : AppColors.expenseRed,
+                              fontFeatures: const [FontFeature.tabularFigures()],
                             ),
                           ),
                         ],

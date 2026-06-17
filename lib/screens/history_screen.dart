@@ -16,20 +16,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
   List<Transaction> _filteredTransactions = [];
   bool _isLoading = true;
   String _searchQuery = '';
-  String _selectedCategory = 'Semua';
+  String _selectedFilter = 'Semua';
 
   final TextEditingController _searchController = TextEditingController();
 
-  final List<Map<String, dynamic>> _categoriesData = [
+  final List<Map<String, dynamic>> _filterOptionsData = [
     {'name': 'Semua', 'emoji': '🔍', 'color': AppColors.primary},
-    {'name': 'Gaji', 'emoji': '💰', 'color': AppColors.incomeGreen},
-    {'name': 'Bonus', 'emoji': '🎁', 'color': Colors.amber},
-    {'name': 'Makanan', 'emoji': '🍔', 'color': AppColors.expenseRed},
-    {'name': 'Transportasi', 'emoji': '🚗', 'color': AppColors.infoBlue},
-    {'name': 'Belanja', 'emoji': '🛒', 'color': AppColors.warnOrange},
-    {'name': 'Tagihan', 'emoji': '🧾', 'color': Colors.purple},
-    {'name': 'Hiburan', 'emoji': '🎬', 'color': Colors.pink},
-    {'name': 'Kesehatan', 'emoji': '💊', 'color': Colors.redAccent},
+    {'name': 'Pemasukan', 'emoji': '💰', 'color': AppColors.incomeGreen},
+    {'name': 'Pengeluaran', 'emoji': '💸', 'color': AppColors.expenseRed},
   ];
 
   @override
@@ -66,11 +60,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
           .toList();
     }
 
-    // Category filter
-    if (_selectedCategory != 'Semua') {
-      results = results
-          .where((tx) => tx.category.contains(_selectedCategory))
-          .toList();
+    // Filter by transaction type
+    if (_selectedFilter == 'Pemasukan') {
+      results = results.where((tx) => tx.isIncome).toList();
+    } else if (_selectedFilter == 'Pengeluaran') {
+      results = results.where((tx) => !tx.isIncome).toList();
     }
 
     setState(() {
@@ -78,14 +72,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
     });
   }
 
-  Map<String, dynamic> get _activeCategoryData {
-    return _categoriesData.firstWhere(
-      (cat) => cat['name'] == _selectedCategory,
-      orElse: () => _categoriesData[0],
+  Map<String, dynamic> get _activeFilterData {
+    return _filterOptionsData.firstWhere(
+      (filter) => filter['name'] == _selectedFilter,
+      orElse: () => _filterOptionsData[0],
     );
   }
 
-  void _showCategoryBottomSheet() {
+  void _showFilterBottomSheet() {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
@@ -126,7 +120,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'Filter Kategori',
+                        'Filter Transaksi',
                         style: theme.textTheme.titleLarge?.copyWith(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
@@ -150,19 +144,19 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     padding: EdgeInsets.zero,
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    itemCount: _categoriesData.length,
+                    itemCount: _filterOptionsData.length,
                     separatorBuilder: (context, index) => const SizedBox(height: 6),
                     itemBuilder: (context, index) {
-                      final cat = _categoriesData[index];
-                      final catName = cat['name'] as String;
-                      final catEmoji = cat['emoji'] as String;
-                      final catColor = cat['color'] as Color;
-                      final isSelected = _selectedCategory == catName;
+                      final opt = _filterOptionsData[index];
+                      final optName = opt['name'] as String;
+                      final optEmoji = opt['emoji'] as String;
+                      final optColor = opt['color'] as Color;
+                      final isSelected = _selectedFilter == optName;
 
                       return InkWell(
                         onTap: () {
                           setState(() {
-                            _selectedCategory = catName;
+                            _selectedFilter = optName;
                           });
                           _applyFilters();
                           Navigator.pop(context);
@@ -182,20 +176,19 @@ class _HistoryScreenState extends State<HistoryScreen> {
                           ),
                           child: Row(
                             children: [
-                              // Circular icon container (24px to 32px max)
                               Container(
                                 width: 32,
                                 height: 32,
                                 decoration: BoxDecoration(
                                   color: isSelected
-                                      ? catColor.withValues(alpha: 0.15)
+                                      ? optColor.withValues(alpha: 0.15)
                                       : (isDark
                                           ? Colors.white.withValues(alpha: 0.06)
                                           : Colors.black.withValues(alpha: 0.04)),
                                   shape: BoxShape.circle,
                                 ),
                                 child: Center(
-                                  child: catName == 'Semua'
+                                  child: optName == 'Semua'
                                       ? Icon(
                                           Icons.tune_rounded,
                                           size: 16,
@@ -206,16 +199,15 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                                   : Colors.black54),
                                         )
                                       : Text(
-                                          catEmoji,
+                                          optEmoji,
                                           style: const TextStyle(fontSize: 16),
                                         ),
                                 ),
                               ),
                               const SizedBox(width: 12),
-                              // Category Name Text
                               Expanded(
                                 child: Text(
-                                  catName,
+                                  optName,
                                   style: TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w500,
@@ -229,7 +221,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                   ),
                                 ),
                               ),
-                              // Selection Indicator (turns orange when selected)
                               Container(
                                 width: 20,
                                 height: 20,
@@ -447,7 +438,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   ),
                   const SizedBox(width: 6),
                   Text(
-                    'Kategori',
+                    'Filter',
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
@@ -459,7 +450,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   const SizedBox(width: 10),
                   // Dropdown button pill
                   GestureDetector(
-                    onTap: _showCategoryBottomSheet,
+                    onTap: _showFilterBottomSheet,
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
                       padding: const EdgeInsets.symmetric(
@@ -467,19 +458,19 @@ class _HistoryScreenState extends State<HistoryScreen> {
                         vertical: 8,
                       ),
                       decoration: BoxDecoration(
-                        color: _activeCategoryData['color'].withValues(
+                        color: _activeFilterData['color'].withValues(
                           alpha: 0.12,
                         ),
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                          color: _activeCategoryData['color'].withValues(
+                          color: _activeFilterData['color'].withValues(
                             alpha: 0.35,
                           ),
                           width: 1.2,
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: _activeCategoryData['color'].withValues(
+                            color: _activeFilterData['color'].withValues(
                               alpha: 0.05,
                             ),
                             blurRadius: 6,
@@ -490,40 +481,40 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          if (_selectedCategory != 'Semua') ...[
+                          if (_selectedFilter != 'Semua') ...[
                             // Emoji circle avatar
                             Container(
                               width: 20,
                               height: 20,
                               decoration: BoxDecoration(
-                                color: _activeCategoryData['color'].withValues(
+                                color: _activeFilterData['color'].withValues(
                                   alpha: 0.25,
                                 ),
                                 shape: BoxShape.circle,
                               ),
                               child: Center(
                                 child: Text(
-                                  _activeCategoryData['emoji'] as String,
+                                  _activeFilterData['emoji'] as String,
                                   style: const TextStyle(fontSize: 11),
                                 ),
                               ),
                             ),
                             const SizedBox(width: 8),
                           ],
-                          // Category Name
+                          // Filter Name
                           Text(
-                            _selectedCategory,
+                            _selectedFilter,
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.bold,
-                              color: _activeCategoryData['color'] as Color,
+                              color: _activeFilterData['color'] as Color,
                             ),
                           ),
                           const SizedBox(width: 6),
                           Icon(
                             Icons.keyboard_arrow_down_rounded,
                             size: 16,
-                            color: _activeCategoryData['color'] as Color,
+                            color: _activeFilterData['color'] as Color,
                           ),
                         ],
                       ),
