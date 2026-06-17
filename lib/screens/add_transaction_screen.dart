@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../theme/app_colors.dart';
 import '../services/transaction_service.dart';
+import '../services/ocr_service.dart';
 import 'widgets/custom_toast.dart';
 
 class AddTransactionScreen extends StatefulWidget {
@@ -37,6 +38,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
   late AnimationController _animationController;
   File? _scannedImageFile;
   final ImagePicker _picker = ImagePicker();
+  final OcrService _ocrService = OcrService();
 
   final List<Map<String, String>> _expenseCategories = [
     {'name': 'Makanan', 'emoji': '🍔'},
@@ -72,6 +74,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
     _amountController.dispose();
     _scanTimer?.cancel();
     _animationController.dispose();
+    _ocrService.dispose();
     super.dispose();
   }
 
@@ -338,13 +341,14 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
       );
       if (image == null) return;
       
+      final imageFile = File(image.path);
       setState(() {
-        _scannedImageFile = File(image.path);
+        _scannedImageFile = imageFile;
         _showScanner = true;
         _isScanning = true;
       });
       
-      _startOcrScanTimer();
+      _processReceiptImage(imageFile);
     } catch (e) {
       if (mounted) {
         CustomToast.showWarning(context, 'Gagal memilih gambar dari galeri: $e');
@@ -362,13 +366,14 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
       );
       if (image == null) return;
       
+      final imageFile = File(image.path);
       setState(() {
-        _scannedImageFile = File(image.path);
+        _scannedImageFile = imageFile;
         _showScanner = true;
         _isScanning = true;
       });
       
-      _startOcrScanTimer();
+      _processReceiptImage(imageFile);
     } catch (e) {
       if (mounted) {
         CustomToast.showWarning(context, 'Gagal mengambil foto dari kamera: $e');
@@ -376,27 +381,48 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
     }
   }
 
-  void _startOcrScanTimer() {
-    _scanTimer?.cancel();
-    _scanTimer = Timer(const Duration(milliseconds: 2500), () {
+  Future<void> _processReceiptImage(File imageFile) async {
+    try {
+      final ocrResult = await _ocrService.scanReceipt(imageFile);
+      
       if (!mounted) return;
       HapticFeedback.heavyImpact();
+      
       setState(() {
         _showScanner = false;
         _isScanning = false;
         
-        // Auto-fill mock receipt content
-        _titleController.text = 'Supermarket Indo';
-        _amountController.text = '185.000';
-        _isIncome = false;
-        _selectedCategory = '🛒 Belanja';
+        if (ocrResult.title.isNotEmpty) {
+          _titleController.text = ocrResult.title;
+        } else {
+          _titleController.text = 'Struk Belanja';
+        }
+        
+        if (ocrResult.amount > 0) {
+          _amountController.text = _formatNumberToIndonesian(ocrResult.amount);
+        } else {
+          _amountController.text = '';
+        }
+        
+        _isIncome = ocrResult.isIncome;
+        _selectedCategory = ocrResult.category;
       });
 
       CustomToast.showSuccess(
         context,
         '📸 OCR Struk Belanja Berhasil! Data diisi otomatis.',
       );
-    });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _showScanner = false;
+        _isScanning = false;
+      });
+      CustomToast.showWarning(
+        context,
+        'Gagal memproses struk belanja: $e',
+      );
+    }
   }
 
   @override
