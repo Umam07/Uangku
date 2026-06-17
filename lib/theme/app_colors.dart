@@ -18,10 +18,10 @@ class AppColors {
   static const Color warnOrange = Color(0xFFFF9500);
 
   // Dark Mode Colors
-  static const Color backgroundDark = Color(0xFF1A1208); // Dark Brown Background
-  static const Color surfaceDark = Color(0xFF2C1F0E);    // Card Dark Brown
-  static const Color textPrimaryDark = Color(0xFFFFFDF5); // Light Text for Dark Mode
-  static const Color textSecondaryDark = Color(0xFFD6D3D1); // Soft Grey Text for Dark Mode
+  static const Color backgroundDark = Color(0xFF121212); // Classic iOS Charcoal Background
+  static const Color surfaceDark = Color(0xFF1C1C1E);    // iOS Dark Grey Surface
+  static const Color textPrimaryDark = Color(0xFFFFFFFF); // Clean White Text for Dark Mode
+  static const Color textSecondaryDark = Color(0xFF8E8E93); // iOS System Grey for Dark Mode
 
   // Apple system status colors (dark)
   static const Color expenseRedDark = Color(0xFFFF453A);

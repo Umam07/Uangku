@@ -136,7 +136,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                 colors: isDark
                     ? [
                         AppColors.backgroundDark,
-                        const Color(0xFF2E1A05),
+                        const Color(0xFF1E1E1E),
                       ]
                     : [
                         AppColors.background,
