@@ -30,7 +30,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void _onTransactionSaved() {
     setState(() {
       _reloadCount++;
-      _currentIndex = 0; // Automatically switch back to HomeTab
+      _currentIndex = 0;
     });
   }
 
@@ -41,8 +41,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       backgroundColor: Colors.transparent,
       builder: (context) => AddTransactionScreen(
         onTransactionSaved: () {
-          Navigator.pop(context); // Close bottom sheet
-          _onTransactionSaved(); // Refresh active screens
+          Navigator.pop(context);
+          _onTransactionSaved();
         },
       ),
     );
@@ -72,15 +72,41 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Height of the floating pill + bottom margin
+    const navbarHeight = 64.0;
+    const navbarBottomMargin = 20.0;
+    const navbarHorizPadding = 16.0;
+
     return Scaffold(
-      // Allow content to scroll behind the translucent bottom navigation bar
+      // extendBody so page content flows behind the floating navbar
       extendBody: true,
-      // Prevent keyboard from pushing up the floating navbar
       resizeToAvoidBottomInset: false,
-      body: _buildActiveScreen(),
-      bottomNavigationBar: AppBottomNavBar(
-        currentIndex: _currentIndex,
-        onTap: _onTabTapped,
+      body: Stack(
+        children: [
+          // ── Main content (with bottom padding so last items aren't hidden) ──
+          Positioned.fill(
+            child: Padding(
+              // Reserve space at the bottom so scrollable content can reach
+              // below the floating navbar
+              padding: EdgeInsets.only(
+                bottom: navbarHeight + navbarBottomMargin + 8,
+              ),
+              child: _buildActiveScreen(),
+            ),
+          ),
+
+          // ── Floating Liquid Glass Navbar ──────────────────────────────────
+          Positioned(
+            left: navbarHorizPadding,
+            right: navbarHorizPadding,
+            bottom: navbarBottomMargin,
+            height: navbarHeight,
+            child: AppBottomNavBar(
+              currentIndex: _currentIndex,
+              onTap: _onTabTapped,
+            ),
+          ),
+        ],
       ),
     );
   }
