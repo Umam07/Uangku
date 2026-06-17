@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
@@ -21,7 +22,7 @@ class AddTransactionScreen extends StatefulWidget {
   State<AddTransactionScreen> createState() => _AddTransactionScreenState();
 }
 
-class _AddTransactionScreenState extends State<AddTransactionScreen> with SingleTickerProviderStateMixin {
+class _AddTransactionScreenState extends State<AddTransactionScreen> with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   final TransactionService _transactionService = TransactionService();
 
   final _formKey = GlobalKey<FormState>();
@@ -39,6 +40,12 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
   File? _scannedImageFile;
   final ImagePicker _picker = ImagePicker();
   final OcrService _ocrService = OcrService();
+
+  // Camera State
+  CameraController? _cameraController;
+  List<CameraDescription> _cameras = [];
+  bool _isCameraInitializing = false;
+  FlashMode _flashMode = FlashMode.off;
 
   final List<Map<String, String>> _expenseCategories = [
     {'name': 'Makanan', 'emoji': '🍔'},
@@ -59,6 +66,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     // Default selected category
     _selectedCategory = '🍔 Makanan';
     
@@ -70,12 +78,30 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _titleController.dispose();
     _amountController.dispose();
     _scanTimer?.cancel();
     _animationController.dispose();
     _ocrService.dispose();
+    _cameraController?.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final CameraController? cameraController = _cameraController;
+
+    // App state changed before we are initialized or if camera isn't active
+    if (cameraController == null || !cameraController.value.isInitialized) {
+      return;
+    }
+
+    if (state == AppLifecycleState.inactive) {
+      cameraController.dispose();
+    } else if (state == AppLifecycleState.resumed) {
+      _initializeCamera();
+    }
   }
 
   void _onToggleType(bool isIncome) {
@@ -171,13 +197,13 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
     }
   }
 
-  Future<void> _checkPermissionsAndPickImage() async {
+  Future<void> _checkPermissionsAndStartCamera() async {
     final cameraStatus = await Permission.camera.status;
     final photoStatus = await Permission.photos.status;
     final storageStatus = await Permission.storage.status;
     
-    final hasCamera = cameraStatus.isGranted;
-    final hasPhotos = photoStatus.isGranted || storageStatus.isGranted;
+    bool hasCamera = cameraStatus.isGranted;
+    bool hasPhotos = photoStatus.isGranted || storageStatus.isGranted;
     
     if (!hasCamera || !hasPhotos) {
       if (mounted) {
@@ -187,11 +213,11 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
           Permission.storage,
         ].request();
         
-        final grantedCamera = result[Permission.camera]?.isGranted ?? false;
-        final grantedPhotos = (result[Permission.photos]?.isGranted ?? false) || 
-                              (result[Permission.storage]?.isGranted ?? false);
+        hasCamera = result[Permission.camera]?.isGranted ?? false;
+        hasPhotos = (result[Permission.photos]?.isGranted ?? false) || 
+                    (result[Permission.storage]?.isGranted ?? false);
         
-        if (!grantedCamera && !grantedPhotos) {
+        if (!hasCamera && !hasPhotos) {
           if (mounted) {
             _showPermissionDeniedDialog();
           }
@@ -200,8 +226,14 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
       }
     }
     
-    if (mounted) {
-      _showImageSourceSelection();
+    setState(() {
+      _showScanner = true;
+      _scannedImageFile = null;
+      _isScanning = false;
+    });
+    
+    if (hasCamera) {
+      _initializeCamera();
     }
   }
 
@@ -243,93 +275,95 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
     );
   }
 
-  void _showImageSourceSelection() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return Container(
-          decoration: BoxDecoration(
-            color: isDark ? AppColors.surfaceDark : AppColors.surface,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 36,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                'Pilih Sumber Struk Belanja',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 20),
-              ListTile(
-                leading: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.camera_alt_rounded, color: AppColors.primary),
-                ),
-                title: Text(
-                  'Ambil Foto Langsung',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
-                  ),
-                ),
-                subtitle: const Text('Gunakan kamera untuk memotret struk belanja'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _capturePhotoWithCamera();
-                },
-              ),
-              const Divider(height: 24),
-              ListTile(
-                leading: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: AppColors.accent.withValues(alpha: 0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.photo_library_rounded, color: AppColors.accent),
-                ),
-                title: Text(
-                  'Pilih dari Galeri',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
-                  ),
-                ),
-                subtitle: const Text('Gunakan foto struk belanja yang sudah ada'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _pickImageFromGallery();
-                },
-              ),
-              const SizedBox(height: 12),
-            ],
-          ),
-        );
-      },
-    );
+  Future<void> _initializeCamera() async {
+    if (_isCameraInitializing) return;
+    setState(() {
+      _isCameraInitializing = true;
+    });
+    
+    try {
+      _cameras = await availableCameras();
+      if (_cameras.isEmpty) {
+        setState(() {
+          _isCameraInitializing = false;
+        });
+        return;
+      }
+      
+      final backCamera = _cameras.firstWhere(
+        (cam) => cam.lensDirection == CameraLensDirection.back,
+        orElse: () => _cameras.first,
+      );
+      
+      final controller = CameraController(
+        backCamera,
+        ResolutionPreset.medium,
+        enableAudio: false,
+      );
+      
+      _cameraController = controller;
+      await controller.initialize();
+      await controller.setFlashMode(_flashMode);
+      
+      if (mounted) {
+        setState(() {
+          _isCameraInitializing = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error initializing camera: $e');
+      if (mounted) {
+        setState(() {
+          _isCameraInitializing = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _toggleFlash() async {
+    final controller = _cameraController;
+    if (controller == null || !controller.value.isInitialized) return;
+    
+    HapticFeedback.lightImpact();
+    final newMode = _flashMode == FlashMode.off ? FlashMode.torch : FlashMode.off;
+    try {
+      await controller.setFlashMode(newMode);
+      setState(() {
+        _flashMode = newMode;
+      });
+    } catch (e) {
+      debugPrint('Error toggling flash: $e');
+    }
+  }
+
+  Future<void> _takePictureAndProcess() async {
+    final controller = _cameraController;
+    if (controller == null || !controller.value.isInitialized) {
+      CustomToast.showWarning(context, 'Kamera belum siap');
+      return;
+    }
+    
+    if (controller.value.isTakingPicture) return;
+    HapticFeedback.mediumImpact();
+    
+    try {
+      final XFile image = await controller.takePicture();
+      final imageFile = File(image.path);
+      
+      setState(() {
+        _scannedImageFile = imageFile;
+        _isScanning = true;
+      });
+      
+      await _cameraController?.dispose();
+      _cameraController = null;
+      
+      _processReceiptImage(imageFile);
+    } catch (e) {
+      if (mounted) {
+        CustomToast.showWarning(context, 'Gagal mengambil foto: $e');
+      }
+    }
   }
 
   Future<void> _pickImageFromGallery() async {
@@ -342,6 +376,10 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
       if (image == null) return;
       
       final imageFile = File(image.path);
+      
+      await _cameraController?.dispose();
+      _cameraController = null;
+      
       setState(() {
         _scannedImageFile = imageFile;
         _showScanner = true;
@@ -356,29 +394,16 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
     }
   }
 
-  Future<void> _capturePhotoWithCamera() async {
-    HapticFeedback.mediumImpact();
-    try {
-      final XFile? image = await _picker.pickImage(
-        source: ImageSource.camera,
-        maxWidth: 1080,
-        maxHeight: 1080,
-      );
-      if (image == null) return;
-      
-      final imageFile = File(image.path);
-      setState(() {
-        _scannedImageFile = imageFile;
-        _showScanner = true;
-        _isScanning = true;
-      });
-      
-      _processReceiptImage(imageFile);
-    } catch (e) {
-      if (mounted) {
-        CustomToast.showWarning(context, 'Gagal mengambil foto dari kamera: $e');
-      }
-    }
+  void _closeScanner() {
+    _scanTimer?.cancel();
+    _cameraController?.dispose();
+    _cameraController = null;
+    setState(() {
+      _showScanner = false;
+      _isScanning = false;
+      _scannedImageFile = null;
+      _isCameraInitializing = false;
+    });
   }
 
   Future<void> _processReceiptImage(File imageFile) async {
@@ -391,6 +416,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
       setState(() {
         _showScanner = false;
         _isScanning = false;
+        _scannedImageFile = null;
         
         if (ocrResult.title.isNotEmpty) {
           _titleController.text = ocrResult.title;
@@ -417,6 +443,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
       setState(() {
         _showScanner = false;
         _isScanning = false;
+        _scannedImageFile = null;
       });
       CustomToast.showWarning(
         context,
@@ -564,7 +591,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
                             Expanded(
                               flex: 2,
                               child: OutlinedButton(
-                                onPressed: _checkPermissionsAndPickImage,
+                                onPressed: _checkPermissionsAndStartCamera,
                                 style: OutlinedButton.styleFrom(
                                   backgroundColor: Colors.transparent,
                                   side: BorderSide(
@@ -894,112 +921,40 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
 
   Widget _buildCameraOverlay(bool isDark, ThemeData theme) {
     final activeColor = _isIncome ? AppColors.incomeGreen : AppColors.expenseRed;
+
     return Positioned.fill(
       child: Container(
-        color: Colors.black.withValues(alpha: 0.9),
-        child: Column(
+        color: Colors.black,
+        child: Stack(
           children: [
-            // Camera top bar
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 20.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.close_rounded, color: Colors.white, size: 28),
-                    onPressed: () {
-                      HapticFeedback.lightImpact();
-                      _scanTimer?.cancel();
-                      setState(() {
-                        _showScanner = false;
-                        _isScanning = false;
-                        _scannedImageFile = null;
-                      });
-                    },
-                  ),
-                  const Text(
-                    'Pindai Struk Belanja',
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
-                  ),
-                  const SizedBox(width: 48), // Spacer
-                ],
-              ),
-            ),
-
-            const Expanded(
-              child: SizedBox(),
-            ),
-
-            // Camera Viewfinder Screen Area
-            Container(
-              width: 280,
-              height: 380,
-              decoration: BoxDecoration(
-                border: Border.all(color: activeColor, width: 2),
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(22),
-                child: Stack(
-                  children: [
-                    // Mock/Real Receipt Image Drawing
-                    Positioned.fill(
-                      child: Container(
-                        color: Colors.white12,
-                        child: _scannedImageFile != null
-                            ? Image.file(
-                                _scannedImageFile!,
-                                fit: BoxFit.cover,
-                              )
-                            : Center(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: const [
-                                    Icon(Icons.receipt_rounded, color: Colors.white38, size: 72),
-                                    SizedBox(height: 12),
-                                    Text(
-                                      'Arahkan struk belanja\nke dalam bingkai',
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(color: Colors.white54, fontSize: 12),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                      ),
+            // 1. Camera preview or image preview
+            if (_scannedImageFile != null)
+              Positioned.fill(
+                child: Image.file(
+                  _scannedImageFile!,
+                  fit: BoxFit.cover,
+                ),
+              )
+            else if (_cameraController != null && _cameraController!.value.isInitialized)
+              Positioned.fill(
+                child: ClipRect(
+                  child: FittedBox(
+                    fit: BoxFit.cover,
+                    child: SizedBox(
+                      width: _cameraController!.value.previewSize!.height,
+                      height: _cameraController!.value.previewSize!.width,
+                      child: CameraPreview(_cameraController!),
                     ),
-
-                    // Laser scan animation line
-                    if (_isScanning)
-                      AnimatedBuilder(
-                        animation: _animationController,
-                        builder: (context, child) {
-                          return Positioned(
-                            top: _animationController.value * 370,
-                            left: 0,
-                            right: 0,
-                            child: Container(
-                              height: 3,
-                              decoration: BoxDecoration(
-                                color: activeColor,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: activeColor.withValues(alpha: 0.8),
-                                    blurRadius: 8,
-                                    spreadRadius: 2,
-                                  )
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-
-                    // Loading overlay if scanning
-                    if (_isScanning)
-                      Container(
-                        color: Colors.black54,
-                        child: Center(
-                          child: Column(
+                  ),
+                ),
+              )
+            else
+              Positioned.fill(
+                child: Container(
+                  color: Colors.black87,
+                  child: Center(
+                    child: _isCameraInitializing
+                        ? Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               CircularProgressIndicator(
@@ -1007,65 +962,373 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
                               ),
                               const SizedBox(height: 16),
                               const Text(
-                                'Membaca data OCR struk...',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 13,
-                                ),
+                                'Membuka kamera...',
+                                style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500),
                               ),
-                              const SizedBox(height: 4),
+                            ],
+                          )
+                        : Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.camera_alt_rounded, color: Colors.white30, size: 64),
+                              const SizedBox(height: 16),
                               const Text(
-                                'Ekstraksi item & total belanja',
-                                style: TextStyle(color: Colors.white54, fontSize: 11),
+                                'Kamera tidak tersedia',
+                                style: TextStyle(color: Colors.white60, fontSize: 14, fontWeight: FontWeight.w500),
+                              ),
+                              const SizedBox(height: 8),
+                              const Text(
+                                'Gunakan tombol di kanan atas untuk memuat dari galeri',
+                                style: TextStyle(color: Colors.white38, fontSize: 12),
+                                textAlign: TextAlign.center,
                               ),
                             ],
                           ),
-                        ),
-                      ),
-                  ],
+                  ),
                 ),
               ),
-            ),
 
-            const Expanded(
-              child: SizedBox(),
-            ),
-
-            // Camera Controls bottom bar
+            // 2. Viewfinder cutout overlay
             if (_scannedImageFile == null)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 40.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    GestureDetector(
-                      onTap: _isScanning ? null : _capturePhotoWithCamera,
-                      child: Container(
-                        width: 76,
-                        height: 76,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 4),
-                          color: Colors.white10,
+              Positioned.fill(
+                child: ColorFiltered(
+                  colorFilter: ColorFilter.mode(
+                    Colors.black.withValues(alpha: 0.55),
+                    BlendMode.srcOut,
+                  ),
+                  child: Stack(
+                    children: [
+                      Container(
+                        decoration: const BoxDecoration(
+                          color: Colors.transparent,
+                          backgroundBlendMode: BlendMode.dstOut,
                         ),
-                        child: Center(
-                          child: Container(
-                            width: 56,
-                            height: 56,
-                            decoration: const BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Colors.white,
+                      ),
+                      Align(
+                        alignment: Alignment.center,
+                        child: Container(
+                          width: 280,
+                          height: 380,
+                          decoration: BoxDecoration(
+                            color: Colors.black,
+                            borderRadius: BorderRadius.circular(24),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+            // 3. Viewfinder borders and pulsing laser animation
+            if (_scannedImageFile == null)
+              Align(
+                alignment: Alignment.center,
+                child: Container(
+                  width: 280,
+                  height: 380,
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: activeColor.withValues(alpha: 0.3),
+                      width: 1.5,
+                    ),
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(24),
+                    child: Stack(
+                      children: [
+                        if (_cameraController != null && _cameraController!.value.isInitialized)
+                          AnimatedBuilder(
+                            animation: _animationController,
+                            builder: (context, child) {
+                              return Positioned(
+                                top: _animationController.value * 370,
+                                left: 0,
+                                right: 0,
+                                child: Container(
+                                  height: 3,
+                                  decoration: BoxDecoration(
+                                    color: activeColor,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: activeColor.withValues(alpha: 0.8),
+                                        blurRadius: 8,
+                                        spreadRadius: 2,
+                                      )
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
+            // 4. Viewfinder Corners decoration (high tech)
+            if (_scannedImageFile == null)
+              Align(
+                alignment: Alignment.center,
+                child: SizedBox(
+                  width: 280,
+                  height: 380,
+                  child: Stack(
+                    children: [
+                      // Top Left
+                      Positioned(
+                        top: 0,
+                        left: 0,
+                        child: Container(
+                          width: 24,
+                          height: 24,
+                          decoration: BoxDecoration(
+                            border: Border(
+                              top: BorderSide(color: activeColor, width: 4),
+                              left: BorderSide(color: activeColor, width: 4),
+                            ),
+                            borderRadius: const BorderRadius.only(
+                              topLeft: Radius.circular(12),
                             ),
                           ),
+                        ),
+                      ),
+                      // Top Right
+                      Positioned(
+                        top: 0,
+                        right: 0,
+                        child: Container(
+                          width: 24,
+                          height: 24,
+                          decoration: BoxDecoration(
+                            border: Border(
+                              top: BorderSide(color: activeColor, width: 4),
+                              right: BorderSide(color: activeColor, width: 4),
+                            ),
+                            borderRadius: const BorderRadius.only(
+                              topRight: Radius.circular(12),
+                            ),
+                          ),
+                        ),
+                      ),
+                      // Bottom Left
+                      Positioned(
+                        bottom: 0,
+                        left: 0,
+                        child: Container(
+                          width: 24,
+                          height: 24,
+                          decoration: BoxDecoration(
+                            border: Border(
+                              bottom: BorderSide(color: activeColor, width: 4),
+                              left: BorderSide(color: activeColor, width: 4),
+                            ),
+                            borderRadius: const BorderRadius.only(
+                              bottomLeft: Radius.circular(12),
+                            ),
+                          ),
+                        ),
+                      ),
+                      // Bottom Right
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        child: Container(
+                          width: 24,
+                          height: 24,
+                          decoration: BoxDecoration(
+                            border: Border(
+                              bottom: BorderSide(color: activeColor, width: 4),
+                              right: BorderSide(color: activeColor, width: 4),
+                            ),
+                            borderRadius: const BorderRadius.only(
+                              bottomRight: Radius.circular(12),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+            // 5. OCR Scanning overlay (laser + text)
+            if (_isScanning)
+              Positioned.fill(
+                child: Container(
+                  color: Colors.black54,
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(activeColor),
+                        ),
+                        const SizedBox(height: 20),
+                        const Text(
+                          'Membaca Data Struk...',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        const Text(
+                          'Mengekstrak nominal & kategori belanja',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
+            // 6. Header/Top Bar (glassmorphic gradient)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: Container(
+                padding: EdgeInsets.only(
+                  top: MediaQuery.of(context).padding.top + 8,
+                  bottom: 16,
+                  left: 8,
+                  right: 16,
+                ),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.black.withValues(alpha: 0.8),
+                      Colors.black.withValues(alpha: 0.0),
+                    ],
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 22),
+                      onPressed: _closeScanner,
+                    ),
+                    const SizedBox(width: 4),
+                    const Text(
+                      'Scan Struk',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                      ),
+                    ),
+                    const Spacer(),
+                    if (_cameraController != null && _cameraController!.value.isInitialized && _scannedImageFile == null)
+                      IconButton(
+                        icon: Icon(
+                          _flashMode == FlashMode.torch
+                              ? Icons.flash_on_rounded
+                              : Icons.flash_off_rounded,
+                          color: _flashMode == FlashMode.torch
+                              ? Colors.amber
+                              : Colors.white,
+                          size: 24,
+                        ),
+                        onPressed: _toggleFlash,
+                      ),
+                    const SizedBox(width: 8),
+                    TextButton.icon(
+                      onPressed: _pickImageFromGallery,
+                      icon: const Icon(Icons.photo_library_rounded, color: Colors.white, size: 18),
+                      label: const Text(
+                        'Masukkan Gambar',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      style: TextButton.styleFrom(
+                        backgroundColor: Colors.white.withValues(alpha: 0.18),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
                         ),
                       ),
                     ),
                   ],
                 ),
-              )
-            else
-              const SizedBox(height: 116), // Maintain layout height
+              ),
+            ),
+
+            // 7. Bottom Controls (Shutter & Instruction)
+            if (_scannedImageFile == null)
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: Container(
+                  padding: const EdgeInsets.only(
+                    bottom: 36,
+                    top: 24,
+                    left: 24,
+                    right: 24,
+                  ),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.bottomCenter,
+                      end: Alignment.topCenter,
+                      colors: [
+                        Colors.black.withValues(alpha: 0.8),
+                        Colors.black.withValues(alpha: 0.0),
+                      ],
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        'Arahkan struk belanja ke dalam bingkai untuk memindai nominal secara otomatis',
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 11,
+                          height: 1.4,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 20),
+                      if (_cameraController != null && _cameraController!.value.isInitialized)
+                        GestureDetector(
+                          onTap: _isScanning ? null : _takePictureAndProcess,
+                          child: Container(
+                            width: 76,
+                            height: 76,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 4),
+                              color: Colors.white10,
+                            ),
+                            child: Center(
+                              child: Container(
+                                width: 56,
+                                height: 56,
+                                decoration: const BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
           ],
         ),
       ),
