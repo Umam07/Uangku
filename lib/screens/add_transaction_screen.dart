@@ -151,6 +151,119 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
     return buffer.toString().split('').reversed.join('');
   }
 
+  List<String> _getCategorySuggestions() {
+    if (_selectedCategory.contains('Makanan')) return ['Makan Siang', 'Kopi', 'Camilan', 'Sembako'];
+    if (_selectedCategory.contains('Transportasi')) return ['Bensin', 'Ojek Online', 'Parkir', 'Tol'];
+    if (_selectedCategory.contains('Belanja')) return ['Bulanan', 'Baju', 'Toko Online', 'Skincare'];
+    if (_selectedCategory.contains('Tagihan')) return ['Listrik', 'Internet', 'Kost', 'Asuransi'];
+    if (_selectedCategory.contains('Hiburan')) return ['Bioskop', 'Game', 'Liburan', 'Konser'];
+    if (_selectedCategory.contains('Kesehatan')) return ['Obat', 'Dokter', 'Vitamin', 'Gym'];
+    
+    if (_selectedCategory.contains('Gaji')) return ['Gaji Pokok', 'Proyek', 'Sampingan'];
+    if (_selectedCategory.contains('Bonus')) return ['THR', 'Bonus Kinerja', 'Hadiah'];
+    if (_selectedCategory.contains('Tabungan')) return ['Bunga Bank', 'Investasi'];
+    if (_selectedCategory.contains('Lainnya')) return ['Refund', 'Uang Masuk', 'Lain-lain'];
+    
+    return [];
+  }
+
+  void _addQuickAmount(int value) {
+    HapticFeedback.mediumImpact();
+    final cleanString = _amountController.text.replaceAll('.', '');
+    double currentVal = double.tryParse(cleanString) ?? 0.0;
+    currentVal += value;
+    final formatted = _formatNumberToIndonesian(currentVal);
+    setState(() {
+      _amountController.value = TextEditingValue(
+        text: formatted,
+        selection: TextSelection.collapsed(offset: formatted.length),
+      );
+    });
+  }
+
+  Widget _buildQuickAmountChip(int value, String label, Color color, bool isDark) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 8.0),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _addQuickAmount(value),
+          borderRadius: BorderRadius.circular(20),
+          child: Ink(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: isDark ? 0.15 : 0.08),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: color.withValues(alpha: 0.25),
+                width: 1,
+              ),
+            ),
+            child: Center(
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSuggestionChips(bool isDark, Color activeColor) {
+    final suggestions = _getCategorySuggestions();
+    if (suggestions.isEmpty) return const SizedBox.shrink();
+    
+    return SizedBox(
+      height: 32,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        itemCount: suggestions.length,
+        itemBuilder: (context, index) {
+          final suggestion = suggestions[index];
+          return Padding(
+            padding: const EdgeInsets.only(right: 8.0),
+            child: ActionChip(
+              label: Text(
+                suggestion,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
+                ),
+              ),
+              backgroundColor: isDark 
+                  ? Colors.white.withValues(alpha: 0.05) 
+                  : Colors.black.withValues(alpha: 0.03),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+                side: BorderSide(
+                  color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.06),
+                ),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+              onPressed: () {
+                HapticFeedback.lightImpact();
+                setState(() {
+                  _titleController.text = suggestion;
+                  _titleController.selection = TextSelection.fromPosition(
+                    TextPosition(offset: suggestion.length),
+                  );
+                });
+              },
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   Future<void> _saveTransaction() async {
     if (!_formKey.currentState!.validate()) return;
     
@@ -462,11 +575,15 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
     return Container(
       decoration: BoxDecoration(
         color: isDark ? AppColors.surfaceDark : AppColors.background,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        border: Border.all(
+          color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.05),
+          width: 1,
+        ),
       ),
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: ClipRRect(
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         child: SizedBox(
           height: MediaQuery.of(context).size.height * 0.85,
           child: Stack(
@@ -474,7 +591,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
               // Main content
               SafeArea(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(16.0, 12.0, 16.0, 40.0),
+                  padding: const EdgeInsets.fromLTRB(20.0, 12.0, 20.0, 40.0),
                   child: Form(
                     key: _formKey,
                     child: Column(
@@ -483,30 +600,52 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
                         // Grabber
                         Center(
                           child: Container(
-                            width: 36,
+                            width: 40,
                             height: 5,
                             decoration: BoxDecoration(
-                              color: isDark ? Colors.white24 : Colors.black12,
+                              color: isDark ? Colors.white24 : Colors.black.withValues(alpha: 0.08),
                               borderRadius: BorderRadius.circular(10),
                             ),
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 16),
                         
                         // Header Title & Cancel Button
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
-                              'Tambah Transaksi',
-                              style: theme.textTheme.titleLarge?.copyWith(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
-                              ),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Tambah Transaksi',
+                                  style: theme.textTheme.titleLarge?.copyWith(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: -0.5,
+                                    color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Catat keuangan harian Anda dengan mudah',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondary,
+                                  ),
+                                ),
+                              ],
                             ),
                             IconButton(
-                              icon: const Icon(Icons.close_rounded),
+                              icon: const Icon(Icons.close_rounded, size: 20),
+                              style: IconButton.styleFrom(
+                                backgroundColor: isDark 
+                                    ? Colors.white.withValues(alpha: 0.05) 
+                                    : Colors.black.withValues(alpha: 0.04),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
                               onPressed: () {
                                 HapticFeedback.lightImpact();
                                 Navigator.pop(context);
@@ -514,7 +653,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
                             ),
                           ],
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 20),
 
                         // Expense / Income Toggle Switch
                         _buildToggleSwitch(isDark),
@@ -527,29 +666,36 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
                         // Title Input
                         Text(
                           'Nama Transaksi (Opsional)',
-                          style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.2,
+                            color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
+                          ),
                         ),
                         const SizedBox(height: 8),
                         TextFormField(
                           controller: _titleController,
                           style: TextStyle(
                             fontWeight: FontWeight.w600,
+                            fontSize: 14,
                             color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
                           ),
                           decoration: InputDecoration(
                             hintText: _isIncome ? 'Misal: Gaji Pokok' : 'Misal: Makan Ramen',
                             prefixIcon: Icon(
                               Icons.edit_note_rounded,
-                              color: activeColor.withValues(alpha: 0.7),
+                              color: activeColor,
+                              size: 22,
                             ),
                             filled: true,
                             fillColor: isDark
                                 ? Colors.white.withValues(alpha: 0.04)
                                 : Colors.black.withValues(alpha: 0.03),
                             hintStyle: TextStyle(
+                              fontSize: 13,
                               color: isDark
-                                  ? AppColors.textSecondaryDark.withValues(alpha: 0.5)
-                                  : AppColors.textSecondary.withValues(alpha: 0.5),
+                                  ? AppColors.textSecondaryDark.withValues(alpha: 0.4)
+                                  : AppColors.textSecondary.withValues(alpha: 0.4),
                             ),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(14),
@@ -559,7 +705,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
                               borderRadius: BorderRadius.circular(14),
                               borderSide: BorderSide(
                                 color: (isDark ? Colors.white : Colors.black)
-                                    .withValues(alpha: 0.05),
+                                    .withValues(alpha: 0.06),
                               ),
                             ),
                             focusedBorder: OutlineInputBorder(
@@ -571,12 +717,19 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
                             ),
                           ),
                         ),
+                        const SizedBox(height: 10),
+                        // Saran Nama Transaksi dinamis
+                        _buildSuggestionChips(isDark, activeColor),
                         const SizedBox(height: 20),
 
                         // Category Selector Label
                         Text(
                           'Pilih Kategori',
-                          style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.2,
+                            color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
+                          ),
                         ),
                         const SizedBox(height: 12),
 
@@ -593,13 +746,13 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
                               child: OutlinedButton(
                                 onPressed: _checkPermissionsAndStartCamera,
                                 style: OutlinedButton.styleFrom(
-                                  backgroundColor: Colors.transparent,
+                                  backgroundColor: activeColor.withValues(alpha: 0.05),
                                   side: BorderSide(
-                                    color: activeColor.withValues(alpha: 0.5),
+                                    color: activeColor.withValues(alpha: 0.35),
                                     width: 1.5,
                                   ),
                                   shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
+                                    borderRadius: BorderRadius.circular(14),
                                   ),
                                   padding: const EdgeInsets.symmetric(vertical: 16),
                                 ),
@@ -610,7 +763,11 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
                                     const SizedBox(width: 8),
                                     Text(
                                       'Scan Struk',
-                                      style: TextStyle(color: activeColor, fontSize: 14, fontWeight: FontWeight.bold),
+                                      style: TextStyle(
+                                        color: activeColor, 
+                                        fontSize: 13, 
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -620,23 +777,34 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
                             // Save Button
                             Expanded(
                               flex: 3,
-                              child: ElevatedButton(
-                                onPressed: _saveTransaction,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: activeColor,
-                                  foregroundColor: Colors.white,
-                                  shadowColor: activeColor.withValues(alpha: 0.4),
-                                  elevation: 4,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(14),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: activeColor.withValues(alpha: 0.35),
+                                      blurRadius: 12,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
                                 ),
-                                child: const Text(
-                                  'Simpan',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
+                                child: ElevatedButton(
+                                  onPressed: _saveTransaction,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: activeColor,
+                                    foregroundColor: Colors.white,
+                                    elevation: 0,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(vertical: 16),
+                                  ),
+                                  child: const Text(
+                                    'Simpan Transaksi',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -660,38 +828,49 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
 
   Widget _buildToggleSwitch(bool isDark) {
     final trackColor = isDark ? AppColors.fillTrackDark : AppColors.fillTrack;
-    final activePillColor = isDark ? Colors.white.withValues(alpha: 0.15) : Colors.white;
+    final activePillColor = isDark 
+        ? Colors.white.withValues(alpha: 0.08) 
+        : Colors.white;
     final inactiveTextColor = isDark ? AppColors.labelTertiaryDark : AppColors.labelTertiary;
     
     final selectedIndex = _isIncome ? 1 : 0;
     final double alignX = selectedIndex == 0 ? -1.0 : 1.0;
+    final activeColor = _isIncome ? AppColors.incomeGreen : AppColors.expenseRed;
     
     return Container(
       width: double.infinity,
-      height: 46,
+      height: 48,
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: trackColor,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.04),
+          width: 1,
+        ),
       ),
       child: Stack(
         children: [
-          // Active sliding pill
+          // Active sliding pill with color tint matching type
           AnimatedAlign(
             alignment: Alignment(alignX, 0.0),
-            duration: const Duration(milliseconds: 250),
-            curve: Curves.easeInOut,
+            duration: const Duration(milliseconds: 280),
+            curve: Curves.easeOutBack,
             child: FractionallySizedBox(
               widthFactor: 0.5,
               child: Container(
                 decoration: BoxDecoration(
                   color: activePillColor,
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: activeColor.withValues(alpha: 0.2),
+                    width: 1,
+                  ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.10),
-                      blurRadius: 3,
-                      offset: const Offset(0, 1),
+                      color: activeColor.withValues(alpha: 0.08),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
                     ),
                   ],
                 ),
@@ -707,7 +886,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
                   behavior: HitTestBehavior.opaque,
                   onTap: () {
                     if (_isIncome) {
-                      HapticFeedback.lightImpact();
+                      HapticFeedback.mediumImpact();
                       _onToggleType(false);
                     }
                   },
@@ -716,7 +895,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
                       'Pengeluaran 💸',
                       style: TextStyle(
                         fontSize: 13,
-                        fontWeight: selectedIndex == 0 ? FontWeight.w600 : FontWeight.w400,
+                        fontWeight: selectedIndex == 0 ? FontWeight.bold : FontWeight.w500,
                         color: selectedIndex == 0 
                             ? AppColors.expenseRed 
                             : inactiveTextColor,
@@ -731,7 +910,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
                   behavior: HitTestBehavior.opaque,
                   onTap: () {
                     if (!_isIncome) {
-                      HapticFeedback.lightImpact();
+                      HapticFeedback.mediumImpact();
                       _onToggleType(true);
                     }
                   },
@@ -740,7 +919,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
                       'Pemasukan 💰',
                       style: TextStyle(
                         fontSize: 13,
-                        fontWeight: selectedIndex == 1 ? FontWeight.w600 : FontWeight.w400,
+                        fontWeight: selectedIndex == 1 ? FontWeight.bold : FontWeight.w500,
                         color: selectedIndex == 1 
                             ? AppColors.incomeGreen 
                             : inactiveTextColor,
@@ -761,43 +940,52 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
     
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            cardColor.withValues(alpha: 0.12),
+            cardColor.withValues(alpha: 0.14),
             cardColor.withValues(alpha: 0.04),
           ],
         ),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: cardColor.withValues(alpha: 0.20),
+          color: cardColor.withValues(alpha: 0.25),
           width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: cardColor.withValues(alpha: 0.03),
-            blurRadius: 10,
+            color: cardColor.withValues(alpha: 0.04),
+            blurRadius: 12,
             spreadRadius: 0,
-            offset: const Offset(0, 4),
+            offset: const Offset(0, 6),
           ),
         ],
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'NOMINAL (${_isIncome ? 'PEMASUKAN' : 'PENGELUARAN'})',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 1,
-              color: cardColor,
+          Center(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              decoration: BoxDecoration(
+                color: cardColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                'NOMINAL ${_isIncome ? 'PEMASUKAN' : 'PENGELUARAN'}',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.2,
+                  color: cardColor,
+                ),
+              ),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.center,
@@ -805,13 +993,13 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
               Text(
                 'Rp',
                 style: TextStyle(
-                  fontSize: 34,
+                  fontSize: 36,
                   fontWeight: FontWeight.bold,
                   color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
                   fontFeatures: const [FontFeature.tabularFigures()],
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 10),
               Expanded(
                 child: TextFormField(
                   controller: _amountController,
@@ -819,7 +1007,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
                   onChanged: _onAmountChanged,
                   textAlign: TextAlign.left,
                   style: TextStyle(
-                    fontSize: 34,
+                    fontSize: 36,
                     fontWeight: FontWeight.bold,
                     color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary,
                     fontFeatures: const [FontFeature.tabularFigures()],
@@ -842,6 +1030,36 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
               ),
             ],
           ),
+          const SizedBox(height: 16),
+          // Separator line
+          Container(
+            height: 1,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  cardColor.withValues(alpha: 0.02),
+                  cardColor.withValues(alpha: 0.20),
+                  cardColor.withValues(alpha: 0.02),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          // Scrollable Quick Amount shortcuts
+          SizedBox(
+            height: 34,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              children: [
+                _buildQuickAmountChip(10000, '+10rb', cardColor, isDark),
+                _buildQuickAmountChip(50000, '+50rb', cardColor, isDark),
+                _buildQuickAmountChip(100000, '+100rb', cardColor, isDark),
+                _buildQuickAmountChip(200000, '+200rb', cardColor, isDark),
+                _buildQuickAmountChip(500000, '+500rb', cardColor, isDark),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -858,7 +1076,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
         crossAxisCount: 3,
         crossAxisSpacing: 8,
         mainAxisSpacing: 8,
-        childAspectRatio: 2.3,
+        childAspectRatio: 2.1,
       ),
       itemCount: categories.length,
       itemBuilder: (context, index) {
@@ -874,44 +1092,75 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> with Single
             });
           },
           child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
-            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeInOut,
+            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
             decoration: BoxDecoration(
               color: isSelected
-                  ? activeColor.withValues(alpha: 0.15)
+                  ? activeColor.withValues(alpha: isDark ? 0.12 : 0.08)
                   : trackColor,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(14),
               border: Border.all(
                 color: isSelected
                     ? activeColor
-                    : Colors.transparent,
+                    : (isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.03)),
                 width: 1.5,
               ),
+              boxShadow: isSelected
+                  ? [
+                      BoxShadow(
+                        color: activeColor.withValues(alpha: 0.05),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      )
+                    ]
+                  : null,
             ),
-            child: Center(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    cat['emoji']!,
-                    style: const TextStyle(fontSize: 16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Circular Emoji Container
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? activeColor.withValues(alpha: 0.2)
+                        : (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white),
+                    shape: BoxShape.circle,
+                    boxShadow: isSelected
+                        ? [
+                            BoxShadow(
+                              color: activeColor.withValues(alpha: 0.1),
+                              blurRadius: 4,
+                            )
+                          ]
+                        : null,
                   ),
-                  const SizedBox(width: 6),
-                  Expanded(
+                  child: Center(
                     child: Text(
-                      cat['name']!,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-                        color: isSelected
-                            ? activeColor
-                            : (isDark ? AppColors.textPrimaryDark : AppColors.textPrimary),
-                      ),
-                      overflow: TextOverflow.ellipsis,
+                      cat['emoji']!,
+                      style: const TextStyle(fontSize: 16),
                     ),
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    cat['name']!,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                      color: isSelected
+                          ? activeColor
+                          : (isDark ? AppColors.textPrimaryDark : AppColors.textPrimary),
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
             ),
           ),
         );
